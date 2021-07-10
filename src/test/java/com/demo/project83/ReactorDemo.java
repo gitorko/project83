@@ -130,6 +130,15 @@ public class ReactorDemo {
                 .map(i -> i + 100)
                 .log()
                 .subscribe(System.out::println);
+
+        Flux<Integer> numbers = Flux.range(1, 5).log();
+        StepVerifier.create(numbers)
+                .expectNext(1, 2, 3, 4, 5)
+                .verifyComplete();
+
+        numbers.subscribe(s -> {
+            log.info("number: {}", s);
+        });
     }
 
     /**
@@ -166,6 +175,17 @@ public class ReactorDemo {
                 .onErrorResume(e -> Mono.just("Jack"));
         mono2.subscribe(System.out::println);
         StepVerifier.create(mono2)
+                .expectNext("Jack")
+                .verifyComplete();
+
+        Mono<Object> error = Mono.error(new IllegalArgumentException())
+                .doOnError(e -> log.error("Error: {}", e.getMessage()))
+                .onErrorResume(s -> {
+                    log.info("Inside on onErrorResume");
+                    return Mono.just("Jack");
+                })
+                .log();
+        StepVerifier.create(error)
                 .expectNext("Jack")
                 .verifyComplete();
     }
@@ -604,9 +624,8 @@ public class ReactorDemo {
                 .verifyComplete();
     }
 
-    //TODO: Check
     @Test
-    void monoDoMethodsFlatMap() {
+    void doOnNextChain() {
         Mono<Object> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase)
@@ -630,55 +649,6 @@ public class ReactorDemo {
         StepVerifier.create(helloMono)
                 .verifyComplete();
     }
-
-    @Test
-    void monoDoMethodsOnError() {
-        Mono<Object> error = Mono.error(new IllegalArgumentException())
-                .doOnError(e -> log.error("Error: {}", e.getMessage()))
-                .onErrorResume(s -> {
-                    log.info("Inside on onErrorResume");
-                    return Mono.just("Jack");
-                })
-                .log();
-
-        StepVerifier.create(error)
-                .expectNext("Jack")
-                .verifyComplete();
-    }
-
-    @Test
-    void monoDoMethodsOnErrorReturn() {
-        Mono<Object> error = Mono.error(new IllegalArgumentException())
-                .onErrorReturn("EMPTY")
-                .log();
-
-        StepVerifier.create(error)
-                .expectNext("EMPTY")
-                .verifyComplete();
-    }
-
-    @Test
-    void fluxSubscriber() {
-        Flux<String> fruits = Flux.just("apple", "oranges", "grapes");
-        StepVerifier.create(fruits)
-                .expectNext("apple", "oranges", "grapes")
-                .verifyComplete();
-    }
-
-    @Test
-    void fluxNumber() {
-        Flux<Integer> numbers = Flux.range(1, 5).log();
-        StepVerifier.create(numbers)
-                .expectNext(1, 2, 3, 4, 5)
-                .verifyComplete();
-
-        numbers.subscribe(s -> {
-            log.info("number: {}", s);
-        });
-    }
-
-
-
 
     @Test
     void fluxBackPressure() {
@@ -816,14 +786,6 @@ public class ReactorDemo {
                 .expectNext("No empty!")
                 .expectComplete()
                 .verify();
-    }
-
-    @Test
-    @SneakyThrows
-    public void fluxInterval() {
-        Flux.interval(Duration.ofSeconds(1))
-                .subscribe(System.out::println);
-        TimeUnit.SECONDS.sleep(2);
     }
 
     private Flux<Object> emptyFlux() {
