@@ -85,6 +85,26 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
+     *     flux sleep
+     * ********************************************************************
+     */
+    @Test
+    void fluxSleep() {
+        Flux flux = Flux.just("Hello", "World").map(e -> {
+            log.info("Received: {}", e);
+            //Very bad idea to do Thread.sleep or any blocking call.
+            //Instead use delayElements.
+            return e;
+        }).delayElements(Duration.ofSeconds(1));
+        flux.subscribe(System.out::println);
+
+        StepVerifier.create(flux)
+                .expectNext("Hello", "World")
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
      *     flux and subscribe.
      * ********************************************************************
      */
@@ -214,6 +234,8 @@ public class ReactorDemo {
     /**
      * ********************************************************************
      *     flatMap
+     *     flatMap should be used for non-blocking operations, or in short anything which returns back Mono,Flux.
+     *     map should be used when you want to do the transformation of an object /data in fixed time. The operations which are done synchronously.
      * ********************************************************************
      */
     @Test
@@ -536,6 +558,26 @@ public class ReactorDemo {
                 .thenRequest(1)
                 .expectNext("JILL")
                 .thenCancel();
+    }
+
+    /**
+     * then will just replay the source terminal signal, resulting in a Mono<Void> to indicate that this never signals any onNext.
+     * thenEmpty not only returns a Mono<Void>, but it takes a Mono<Void> as a parameter. It represents a concatenation of the source completion signal then the second, empty Mono completion signal. In other words, it completes when A then B have both completed sequentially, and doesn't emit data.
+     * thenMany waits for the source to complete then plays all the signals from its Publisher<R> parameter, resulting in a Flux<R> that will "pause" until the source completes, then emit the many elements from the provided publisher before replaying its completion signal as well.
+     */
+    @Test
+    void thenMany() {
+
+    }
+
+    @Test
+    void thenEmpty() {
+
+    }
+
+    @Test
+    void then() {
+
     }
 
     /**
