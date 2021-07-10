@@ -83,6 +83,21 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
+     *     flux and subscribe.
+     * ********************************************************************
+     */
+    @Test
+    void fluxFilter() {
+        Flux flux = Flux.just(1, 2, 3, 4, 5).filter(i -> i % 2 == 0);
+        flux.subscribe(System.out::println);
+
+        StepVerifier.create(flux)
+                .expectNext(2,4)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
      *    flux array
      * ********************************************************************
      */
@@ -957,5 +972,6 @@ class MyFeed {
 
 interface MyListener {
     void priceTick(String msg);
+
     void error(Throwable error);
 }
