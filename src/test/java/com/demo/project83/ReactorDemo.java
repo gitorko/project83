@@ -31,8 +31,6 @@ import reactor.test.StepVerifier;
 @Slf4j
 public class ReactorDemo {
 
-    public static String name = "John";
-
     /**
      * ********************************************************************
      *     mono and subscribe.
@@ -59,12 +57,12 @@ public class ReactorDemo {
                 .expectNext("Jill")
                 .verifyComplete();
 
-        Mono<String> helloMono = Mono.just(name).log();
+        Mono<String> helloMono = Mono.just("Jack").log();
         helloMono.subscribe(s -> {
             log.info("Got: {}", s);
         });
         StepVerifier.create(helloMono)
-                .expectNext(name)
+                .expectNext("Jack")
                 .verifyComplete();
     }
 
@@ -570,7 +568,7 @@ public class ReactorDemo {
 
     @Test
     void monoCancelSubscription() {
-        Mono<String> helloMono = Mono.just(name)
+        Mono<String> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase);
         helloMono.subscribe(s -> {
@@ -582,13 +580,13 @@ public class ReactorDemo {
         );
 
         StepVerifier.create(helloMono)
-                .expectNext(name.toUpperCase())
+                .expectNext("Jack".toUpperCase())
                 .verifyComplete();
     }
 
     @Test
     void monoCompleteSubscriptionRequestBounded() {
-        Mono<String> helloMono = Mono.just(name)
+        Mono<String> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase);
         helloMono.subscribe(s -> {
@@ -602,14 +600,14 @@ public class ReactorDemo {
         );
 
         StepVerifier.create(helloMono)
-                .expectNext(name.toUpperCase())
+                .expectNext("Jack".toUpperCase())
                 .verifyComplete();
     }
 
     //TODO: Check
     @Test
     void monoDoMethodsFlatMap() {
-        Mono<Object> helloMono = Mono.just(name)
+        Mono<Object> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase)
                 .doOnSubscribe(s -> {
@@ -639,12 +637,12 @@ public class ReactorDemo {
                 .doOnError(e -> log.error("Error: {}", e.getMessage()))
                 .onErrorResume(s -> {
                     log.info("Inside on onErrorResume");
-                    return Mono.just(name);
+                    return Mono.just("Jack");
                 })
                 .log();
 
         StepVerifier.create(error)
-                .expectNext(name)
+                .expectNext("Jack")
                 .verifyComplete();
     }
 
@@ -981,6 +979,7 @@ public class ReactorDemo {
 }
 
 class MyFeed {
+
     List<MyListener> listeners = new ArrayList<>();
 
     public void register(MyListener listener) {
@@ -996,6 +995,5 @@ class MyFeed {
 
 interface MyListener {
     void priceTick(String msg);
-
     void error(Throwable error);
 }
