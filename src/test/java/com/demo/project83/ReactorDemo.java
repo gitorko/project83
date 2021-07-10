@@ -181,9 +181,16 @@ public class ReactorDemo {
         Mono<List<Integer>> just = Mono.just(Arrays.asList(1, 2, 3));
         Flux<Integer> integerFlux = just.flatMapMany(it -> Flux.fromIterable(it));
         integerFlux.subscribe(System.out::println);
-
         StepVerifier
                 .create(integerFlux)
+                .expectNext(1, 2, 3)
+                .verifyComplete();
+
+        Flux<Integer> integerFlux2 = just.flatMapIterable(list -> list)
+                .log();
+        integerFlux2.subscribe(System.out::println);
+        StepVerifier
+                .create(integerFlux2)
                 .expectNext(1, 2, 3)
                 .verifyComplete();
     }
