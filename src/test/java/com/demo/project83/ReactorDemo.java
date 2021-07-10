@@ -156,6 +156,20 @@ public class ReactorDemo {
         });
     }
 
+    @Test
+    void flatMapMany() {
+        Flux<String> flux = Mono.just("the quick brown fox jumps over the lazy dog")
+                .flatMapMany(word -> Flux.fromArray(word.split("")))
+                .distinct()
+                .sort();
+        flux.subscribe(System.out::println);
+
+        //26 letters in the alphabet
+        StepVerifier.create(flux)
+                .expectNextCount(26)
+                .expectComplete();
+    }
+
     /**
      * ********************************************************************
      *    flux to mono list
