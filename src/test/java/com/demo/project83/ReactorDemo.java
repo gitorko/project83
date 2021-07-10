@@ -489,20 +489,20 @@ public class ReactorDemo {
     @Test
     void fluxZipWith() {
         List<String> words = Arrays.asList("the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog");
-        Flux.fromIterable(words)
-                .subscribe(System.out::println);
 
-        //Every word gets a number.
+        //Every word gets a number, returns a tuple
         Flux.fromIterable(words)
                 .zipWith(Flux.range(1, words.size()))
                 .subscribe(System.out::println);
 
+        //Returns a single string.
         Flux.fromIterable(words)
                 .zipWith(Flux.range(1, 100), (word, line) -> {
                     return line + ". " + word;
                 })
                 .subscribe(System.out::println);
 
+        //Print distinct chars with number
         Flux.fromIterable(words)
                 .flatMap(word -> Flux.fromArray(word.split("")))
                 .distinct()

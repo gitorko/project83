@@ -2,6 +2,7 @@ package com.demo.project83;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import lombok.Builder;
 import lombok.Data;
@@ -18,10 +19,16 @@ public class ReactorChain {
         request.setName("Twitter");
         Mono.just(request)
                 .map(ReactorChain::convertToEntity)
+                .zipWith(ReactorChain.getNameSuffix(), ReactorChain::appendSuffix)
                 .flatMap(ReactorChain::addCompanyOwner)
                 .flatMap(ReactorChain::appendOrgIdToDepartment)
                 .flatMap(ReactorChain::save)
                 .subscribe(System.out::println);
+    }
+
+    private static Company appendSuffix(Company company, String nameSuffix) {
+        company.setName(company.name + " " + nameSuffix);
+        return company;
     }
 
     private static Mono<String> getOwnerName() {
@@ -51,6 +58,10 @@ public class ReactorChain {
             company.getDepartments().forEach(d -> d.setName(e + " " + d.getName()));
             return company;
         });
+    }
+
+    public static Mono<String> getNameSuffix() {
+        return Mono.just(".Inc");
     }
 
     public static Mono<Company> addCompanyOwner(Company company) {
