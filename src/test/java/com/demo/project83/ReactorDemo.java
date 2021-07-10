@@ -27,6 +27,8 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Slf4j
 public class ReactorDemo {
@@ -92,7 +94,7 @@ public class ReactorDemo {
         flux.subscribe(System.out::println);
 
         StepVerifier.create(flux)
-                .expectNext(2,4)
+                .expectNext(2, 4)
                 .verifyComplete();
     }
 
@@ -156,8 +158,14 @@ public class ReactorDemo {
         });
     }
 
+    /**
+     * ********************************************************************
+     *     flux flatMapMany
+     * ********************************************************************
+     */
     @Test
     void flatMapMany() {
+        //Used to convert mono to flux
         Flux<String> flux = Mono.just("the quick brown fox jumps over the lazy dog")
                 .flatMapMany(word -> Flux.fromArray(word.split("")))
                 .distinct()
@@ -168,6 +176,131 @@ public class ReactorDemo {
         StepVerifier.create(flux)
                 .expectNextCount(26)
                 .expectComplete();
+
+        //Converts Mono of list to Flux.
+        Mono<List<Integer>> just = Mono.just(Arrays.asList(1, 2, 3));
+        Flux<Integer> integerFlux = just.flatMapMany(it -> Flux.fromIterable(it));
+        integerFlux.subscribe(System.out::println);
+
+        StepVerifier
+                .create(integerFlux)
+                .expectNext(1, 2, 3)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *     map
+     * ********************************************************************
+     */
+    @Test
+    public void fluxMap() {
+
+        Flux<String> fluxFromJust = Flux.just("Jack", "Ram").log();
+        Flux<Integer> filter = fluxFromJust.map(i -> i.length());
+        StepVerifier
+                .create(filter)
+                .expectNext(4, 3)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *     flatMap
+     * ********************************************************************
+     */
+    @Test
+    void flatMap() {
+        //Modification of object in chain - done via flatMap
+        Mono<String> mono1 = Mono.just("Jack")
+                .flatMap(ReactorDemo::appendGreet);
+        StepVerifier.create(mono1)
+                .expectNext("Hello Jack")
+                .verifyComplete();
+
+        //Modification of object in chain - done via zipWith
+        Mono<String> mono2 = Mono.just("Jack")
+                .zipWith(Mono.just("Hello "), ReactorDemo::getGreet);
+        StepVerifier.create(mono2)
+                .expectNext("Hello Jack")
+                .verifyComplete();
+    }
+
+    private static Mono<String> appendGreet(String name) {
+        return Mono.just("Hello " + name);
+    }
+
+    private static String getGreet(String name, String greet) {
+        return greet + name;
+    }
+
+    @Test
+    public void fluxFlatMap() {
+
+        Flux<Integer> fluxFromJust = Flux.range(1, 3).log();
+        Flux<Integer> integerFlux = fluxFromJust
+                .flatMap(i -> getSomeFlux(i));
+
+        StepVerifier
+                .create(integerFlux)
+                .expectNextCount(30)
+                .verifyComplete();
+    }
+
+    private Flux<Integer> getSomeFlux(Integer i) {
+        return Flux.range(i, 10);
+    }
+
+    /**
+     * ********************************************************************
+     *     startWith
+     * ********************************************************************
+     */
+    @Test
+    public void startWith() {
+        Flux<Integer> just = Flux.range(1, 3);
+        Flux<Integer> integerFlux = just.startWith(0);
+        StepVerifier.create(integerFlux)
+                .expectNext(0, 1, 2, 3)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *     Tuple
+     * ********************************************************************
+     */
+    @Test
+    void fluxIndex() {
+        Flux<Tuple2<Long, String>> index = Flux
+                .just("apple", "banana", "orange")
+                .index();
+        StepVerifier.create(index)
+                .expectNext(Tuples.of(0L, "apple"))
+                .expectNext(Tuples.of(1L, "banana"))
+                .expectNext(Tuples.of(2L, "orange"))
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *    takeWhile & skipWhile
+     * ********************************************************************
+     */
+    @Test
+    void takeWhile() {
+        Flux<Integer> fluxFromJust = Flux.range(1, 10).log();
+        Flux<Integer> takeWhile = fluxFromJust.takeWhile(i -> i <= 5);
+        StepVerifier
+                .create(takeWhile)
+                .expectNext(1, 2, 3, 4, 5)
+                .verifyComplete();
+
+        Flux<Integer> skipWhile = fluxFromJust.skipWhile(i -> i <= 5);
+        StepVerifier
+                .create(skipWhile)
+                .expectNext(6, 7, 8, 9, 10)
+                .verifyComplete();
     }
 
     /**
@@ -183,6 +316,20 @@ public class ReactorDemo {
 
         StepVerifier.create(mono)
                 .expectNext(Arrays.asList("Jack", "Jill"))
+                .verifyComplete();
+
+        Mono<List<Integer>> listMono1 = Flux
+                .just(1, 2, 3)
+                .collectList();
+        StepVerifier.create(listMono1)
+                .expectNext(Arrays.asList(1, 2, 3))
+                .verifyComplete();
+
+        Mono<List<Integer>> listMono2 = Flux
+                .just(5, 2, 4, 1, 3)
+                .collectSortedList();
+        StepVerifier.create(listMono2)
+                .expectNext(Arrays.asList(1, 2, 3, 4, 5))
                 .verifyComplete();
     }
 
@@ -503,10 +650,18 @@ public class ReactorDemo {
                     return (tuple.getT1() + " " + tuple.getT2());
                 });
         flux3.subscribe(System.out::println);
-
         StepVerifier.create(flux3)
                 .expectNext("red apple")
                 .expectNext("yellow banana")
+                .verifyComplete();
+
+        //No tuple, operation on what to do is defined.
+        Flux<Integer> firstFlux = Flux.just(1, 2, 3);
+        Flux<Integer> secondFlux = Flux.just(10, 20, 30, 40);
+        Flux<Integer> zip = Flux.zip(firstFlux, secondFlux, (num1, num2) -> num1 + num2);
+        StepVerifier
+                .create(zip)
+                .expectNext(11, 22, 33)
                 .verifyComplete();
     }
 
@@ -558,6 +713,21 @@ public class ReactorDemo {
         StepVerifier.create(mono3)
                 .expectNext("Jill")
                 .verifyComplete();
+    }
+
+    @Test
+    public void bufferGroup() {
+        Flux<List<Integer>> buffer = Flux
+                .range(1, 7)
+                .buffer(2);
+        StepVerifier
+                .create(buffer)
+                .expectNext(Arrays.asList(1, 2))
+                .expectNext(Arrays.asList(3, 4))
+                .expectNext(Arrays.asList(5, 6))
+                .expectNext(Arrays.asList(7))
+                .verifyComplete();
+
     }
 
     @Test
