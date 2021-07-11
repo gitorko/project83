@@ -15,6 +15,7 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -701,6 +702,17 @@ public class ReactorDemo {
                 item -> item.split(":")[1])
                 .subscribe(map1::putAll);
         map1.forEach((key, value) -> System.out.println(key + " -> " + value));
+    }
+
+    @Test
+    void transform() {
+        //Function defines input and output
+        Function<Flux<String>, Flux<String>> filterMap = name -> name.map(String::toUpperCase);
+        Flux.fromIterable(List.of("Jack", "Joe", "Jill"))
+                .transform(filterMap)
+                .filter(s -> s.length() > 3)
+                .log()
+                .subscribe(System.out::println);
     }
 
     /**
