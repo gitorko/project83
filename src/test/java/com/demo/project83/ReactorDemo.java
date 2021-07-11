@@ -914,6 +914,7 @@ public class ReactorDemo {
      * ********************************************************************
      *  zip - waits for both flux to emit one element. 2-8 flux can be zipped
      *  returns a tuple
+     *  works only with flux
      * ********************************************************************
      */
     @Test
@@ -943,7 +944,7 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
-     *  zipWith
+     *  zipWith - works with flux and mono
      * ********************************************************************
      */
     @Test
