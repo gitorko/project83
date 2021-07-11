@@ -1103,19 +1103,23 @@ public class ReactorDemo {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  doOn operators
+     * ********************************************************************
+     */
     @Test
     void doOnNextChain() {
         Mono<Object> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase)
-                .doOnSubscribe(s -> {
-                    log.info("Subscribed!");
-                })
+                .doOnSubscribe(s -> log.info("Subscribed!"))
                 .doOnRequest(s -> log.info("Requested!"))
                 .doOnNext(s -> log.info("Value: {}", s))
                 .flatMap(s -> Mono.empty())
                 .doOnNext(s -> log.info("Value: {}", s)) //Will not be executed.
-                .doOnSuccess(s -> log.info("Do on success {}", s));
+                .doOnSuccess(s -> log.info("Do on success {}", s))
+                .doFinally(s -> log.info("Do on finally {}", s));
         helloMono.subscribe(s -> {
                     log.info("Got: {}", s);
                 },
