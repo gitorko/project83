@@ -274,6 +274,10 @@ public class ReactorDemo {
                 .create(integerFlux)
                 .expectNextCount(30)
                 .verifyComplete();
+
+        Flux.just(1, 5, 10)
+                .flatMap(num -> Flux.just(num * 10))
+                .subscribe(System.out :: println);
     }
 
     private Flux<Integer> getSomeFlux(Integer i) {
@@ -571,7 +575,6 @@ public class ReactorDemo {
         names.map(String::toUpperCase)
                 .thenMany(ReactorDemo.deleteFromDb())
                 .thenMany(ReactorDemo.saveToDb())
-                .then()
                 .subscribe(System.out::println);
     }
 
@@ -583,14 +586,28 @@ public class ReactorDemo {
         return Flux.just("Saved to db").log();
     }
 
+    private static Mono<Void> sendMail() {
+        return Mono.empty();
+    }
+
     @Test
     void thenEmpty() {
-
+        Flux<String> names = Flux.just("Jack", "Jill");
+        names.map(String::toUpperCase)
+                .thenMany(ReactorDemo.saveToDb())
+                .thenEmpty(ReactorDemo.sendMail())
+                .subscribe(System.out::println);
     }
 
     @Test
     void then() {
-
+        Flux<String> names = Flux.just("Jack", "Jill");
+        names.map(String::toUpperCase)
+                .thenMany(ReactorDemo.saveToDb())
+                .then()
+                .then(Mono.just("Ram"))
+                .thenReturn("Done!")
+                .subscribe(System.out::println);
     }
 
     /**
