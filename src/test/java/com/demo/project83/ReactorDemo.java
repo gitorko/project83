@@ -566,8 +566,21 @@ public class ReactorDemo {
      * thenMany waits for the source to complete then plays all the signals from its Publisher<R> parameter, resulting in a Flux<R> that will "pause" until the source completes, then emit the many elements from the provided publisher before replaying its completion signal as well.
      */
     @Test
-    void thenMany() {
+    void thenManyChain() {
+        Flux<String> names = Flux.just("Jack", "Jill");
+        names.map(String::toUpperCase)
+                .thenMany(ReactorDemo.deleteFromDb())
+                .thenMany(ReactorDemo.saveToDb())
+                .then()
+                .subscribe(System.out::println);
+    }
 
+    private static Flux<String> deleteFromDb() {
+        return Flux.just("Deleted from db").log();
+    }
+
+    private static Flux<String> saveToDb() {
+        return Flux.just("Saved to db").log();
     }
 
     @Test
