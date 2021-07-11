@@ -1164,10 +1164,19 @@ public class ReactorDemo {
                 .expectNext("No empty!")
                 .expectComplete()
                 .verify();
+
+        getHello().map(e -> {
+            return e.get().toUpperCase();
+        }).switchIfEmpty(Mono.error(new Throwable("error")))
+                .subscribe(System.out::println);
     }
 
     private Flux<Object> emptyFlux() {
         return Flux.empty();
+    }
+
+    private Mono<Optional<String>> getHello() {
+        return Mono.just(Optional.of("hello"));
     }
 
     @Test
@@ -1263,14 +1272,6 @@ public class ReactorDemo {
     }
 
     @Test
-    public void emptyMonoTest() {
-        getHello().map(e -> {
-            return e.get().toUpperCase();
-        }).switchIfEmpty(Mono.error(new Throwable("error")))
-                .subscribe(System.out::println);
-    }
-
-    @Test
     public void monoSupplier() {
         Supplier<String> stringSupplier = () -> getName();
         Mono<String> mono = Mono.fromSupplier(stringSupplier);
@@ -1308,9 +1309,6 @@ public class ReactorDemo {
         }).map(String::toUpperCase);
     }
 
-    private Mono<Optional<String>> getHello() {
-        return Mono.just(Optional.of("hello"));
-    }
 }
 
 class MyFeed {
