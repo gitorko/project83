@@ -771,6 +771,12 @@ public class ReactorDemo {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  mergeSequential - subscribe at same time, result merged in sequence.
+     *  concat          - subscribe not at same time, result merged in sequence.
+     * ********************************************************************
+     */
     @Test
     @SneakyThrows
     void mergeSequentialTest() {
@@ -906,7 +912,8 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
-     *  zip
+     *  zip - waits for both flux to emit one element. 2-8 flux can be zipped
+     *  returns a tuple
      * ********************************************************************
      */
     @Test
@@ -926,6 +933,7 @@ public class ReactorDemo {
         //No tuple, operation on what to do is defined.
         Flux<Integer> firstFlux = Flux.just(1, 2, 3);
         Flux<Integer> secondFlux = Flux.just(10, 20, 30, 40);
+        //Define how the zip should happen
         Flux<Integer> zip = Flux.zip(firstFlux, secondFlux, (num1, num2) -> num1 + num2);
         StepVerifier
                 .create(zip)
