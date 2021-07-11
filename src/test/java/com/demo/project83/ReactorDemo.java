@@ -754,7 +754,58 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
-     *  mergeWith
+     *  merge - available for flux, not available for mono
+     * ********************************************************************
+     */
+    @Test
+    @SneakyThrows
+    void mergeTest() {
+        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
+        Flux<String> flux2 = Flux.just("c", "d");
+        //Eager will not wait till first flux finishes.
+        Flux<String> flux = Flux.merge(flux1, flux2)
+                .log();
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("c", "d", "a", "b")
+                .verifyComplete();
+    }
+
+    @Test
+    @SneakyThrows
+    void mergeSequentialTest() {
+        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
+        Flux<String> flux2 = Flux.just("c", "d");
+        Flux<String> flux = Flux.mergeSequential(flux1, flux2, flux1)
+                .log();
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("a", "b", "c", "d", "a", "b")
+                .verifyComplete();
+    }
+
+    @Test
+    void mergeDelayTest() {
+        Flux<String> flux1 = Flux.just("a", "b").map(s -> {
+            if (s.equals("b")) {
+                throw new IllegalArgumentException("error!");
+            }
+            return s;
+        }).doOnError(e -> log.error("Error: {}", e));
+
+        Flux<String> flux2 = Flux.just("c", "d");
+        Flux<String> flux = Flux.mergeDelayError(1, flux1, flux2, flux1)
+                .log();
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("a", "c", "d", "a")
+                .expectError()
+                .verify();
+    }
+
+    /**
+     * ********************************************************************
+     *  mergeWith - works with mono and flux.
      * ********************************************************************
      */
     @Test
@@ -769,11 +820,20 @@ public class ReactorDemo {
                 .expectSubscription()
                 .expectNext("c", "d", "a", "b")
                 .verifyComplete();
+
+        Mono aMono = Mono.just("a");
+        Mono bMono = Mono.just("b");
+        Flux flux3 = aMono.mergeWith(bMono);
+        flux3.subscribe(System.out::println);
+        StepVerifier.create(flux3)
+                .expectNext("a","b")
+                .verifyComplete();
+
     }
 
     /**
      * ********************************************************************
-     *  concatWith
+     *  concatWith - works with mono and flux.
      * ********************************************************************
      */
     @Test
@@ -787,11 +847,20 @@ public class ReactorDemo {
                 .expectSubscription()
                 .expectNext("a", "b", "c", "d")
                 .verifyComplete();
+
+        Mono<String> aFlux = Mono.just("a");
+        Mono<String> bFlux = Mono.just("b");
+        Flux<String> stringFlux = aFlux.concatWith(bFlux);
+        stringFlux.subscribe(System.out::println);
+        StepVerifier.create(stringFlux)
+                .expectNext("a", "b")
+                .verifyComplete();
+
     }
 
     /**
      * ********************************************************************
-     *  concat
+     *  concat - Only for flux. Not available for mono
      * ********************************************************************
      */
     @Test
@@ -815,6 +884,24 @@ public class ReactorDemo {
                 .expectSubscription()
                 .expectNext("a", "b", "c", "d")
                 .verifyComplete();
+    }
+
+    @Test
+    void concatDelayErrorTest() {
+        Flux<String> flux1 = Flux.just("a", "b").map(s -> {
+            if (s.equals("b")) {
+                throw new IllegalArgumentException("error!");
+            }
+            return s;
+        });
+        Flux<String> flux2 = Flux.just("c", "d");
+        Flux<String> flux = Flux.concatDelayError(flux1, flux2)
+                .log();
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("a", "c", "d")
+                .expectError()
+                .verify();
     }
 
     /**
@@ -897,7 +984,7 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
-     *  mono first
+     *  buffer
      * ********************************************************************
      */
     @Test
@@ -1207,69 +1294,7 @@ public class ReactorDemo {
                 .verifyComplete();
     }
 
-    @Test
-    @SneakyThrows
-    void mergeTest() {
-        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
-        Flux<String> flux2 = Flux.just("c", "d");
-        //Eager will not wait till first flux finishes.
-        Flux<String> flux = Flux.merge(flux1, flux2)
-                .log();
-        StepVerifier.create(flux)
-                .expectSubscription()
-                .expectNext("c", "d", "a", "b")
-                .verifyComplete();
-    }
 
-    @Test
-    @SneakyThrows
-    void mergeSequentialTest() {
-        Flux<String> flux1 = Flux.just("a", "b").delayElements(Duration.ofMillis(200));
-        Flux<String> flux2 = Flux.just("c", "d");
-        Flux<String> flux = Flux.mergeSequential(flux1, flux2, flux1)
-                .log();
-        StepVerifier.create(flux)
-                .expectSubscription()
-                .expectNext("a", "b", "c", "d", "a", "b")
-                .verifyComplete();
-    }
-
-    @Test
-    void concatDelayTest() {
-        Flux<String> flux1 = Flux.just("a", "b").map(s -> {
-            if (s.equals("b")) {
-                throw new IllegalArgumentException("error!");
-            }
-            return s;
-        });
-        Flux<String> flux2 = Flux.just("c", "d");
-        Flux<String> flux = Flux.concatDelayError(flux1, flux2)
-                .log();
-        StepVerifier.create(flux)
-                .expectSubscription()
-                .expectNext("a", "c", "d")
-                .expectError()
-                .verify();
-    }
-
-    @Test
-    void mergeDelayTest() {
-        Flux<String> flux1 = Flux.just("a", "b").map(s -> {
-            if (s.equals("b")) {
-                throw new IllegalArgumentException("error!");
-            }
-            return s;
-        }).doOnError(e -> log.error("Error: {}", e));
-
-        Flux<String> flux2 = Flux.just("c", "d");
-        Flux<String> flux = Flux.mergeDelayError(1, flux1, flux2, flux1)
-                .log();
-        StepVerifier.create(flux)
-                .expectSubscription()
-                .expectNext("a", "c", "d", "a")
-                .expectError()
-                .verify();
-    }
 
     @Test
     public void monoSupplier() {
