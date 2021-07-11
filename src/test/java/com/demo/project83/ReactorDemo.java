@@ -6,7 +6,10 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -277,7 +280,7 @@ public class ReactorDemo {
 
         Flux.just(1, 5, 10)
                 .flatMap(num -> Flux.just(num * 10))
-                .subscribe(System.out :: println);
+                .subscribe(System.out::println);
     }
 
     private Flux<Integer> getSomeFlux(Integer i) {
@@ -608,6 +611,61 @@ public class ReactorDemo {
                 .then(Mono.just("Ram"))
                 .thenReturn("Done!")
                 .subscribe(System.out::println);
+    }
+
+    @Test
+    void collectList() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:apple");
+        //Convert flux to list and iterate over it.
+        flux.collectList()
+                .flatMap(e -> {
+                    e.forEach(System.out::println);
+                    return Mono.empty();
+                })
+                .subscribe();
+
+        flux.collectSortedList()
+                .flatMap(e -> {
+                    e.forEach(System.out::println);
+                    return Mono.empty();
+                })
+                .subscribe();
+
+        //Dont use infinit flux, will never return.
+        //Flux.interval(Duration.ofMillis(1000)).collectList().subscribe();
+
+        List<String> list3 = new ArrayList<>();
+        flux.collectList().subscribe(list3::addAll);
+        list3.forEach(System.out::println);
+    }
+
+    @Test
+    void collectMap() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:apple");
+        Map<String, String> map1 = new HashMap<>();
+        flux.collectMap(
+                item -> item.split(":")[0],
+                item -> item.split(":")[1])
+                .subscribe(map1::putAll);
+        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
+    }
+
+    @Test
+    void collectMultimap() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:grapes",
+                "red:apple");
+        Map<String, Collection<String>> map1 = new HashMap<>();
+        flux.collectMultimap(
+                item -> item.split(":")[0],
+                item -> item.split(":")[1])
+                .subscribe(map1::putAll);
+        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
     }
 
     /**
