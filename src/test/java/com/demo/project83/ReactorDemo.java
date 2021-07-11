@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -264,6 +265,40 @@ public class ReactorDemo {
 
     private static String getGreet(String name, String greet) {
         return greet + name;
+    }
+
+    @Test
+    void flatMap2() {
+        Flux.fromIterable(List.of("Jack", "Joe", "Jill"))
+                .map(String::toUpperCase)
+                .filter(s -> s.length() > 3)
+                .flatMap(s -> splitString(s))
+                .log()
+                .subscribe(System.out::println);
+    }
+
+    private Flux<String> splitString(String name) {
+        return Flux.fromArray(name.split(""));
+    }
+
+    //Same as flatMap but order is preserved.
+    //concatMap takes more time but ordering is preserved.
+    //flatMap takes less time but ordering is lost.
+    @Test
+    @SneakyThrows
+    void concatMap() {
+        Flux.fromIterable(List.of("Jack", "Joe", "Jill"))
+                .map(String::toUpperCase)
+                .filter(s -> s.length() > 3)
+                .concatMap(s -> splitStringAsync(s))
+                .log()
+                .subscribe(System.out::println);
+        TimeUnit.SECONDS.sleep(5);
+    }
+
+    private Flux<String> splitStringAsync(String name) {
+        return Flux.fromArray(name.split(""))
+                .delayElements(Duration.ofMillis(new Random().nextInt(1000)));
     }
 
     @Test
