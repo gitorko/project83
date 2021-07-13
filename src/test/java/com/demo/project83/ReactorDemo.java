@@ -291,14 +291,14 @@ public class ReactorDemo {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         Flux<String> flux2 = Flux.just("apple", "orange").log();
 
-        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemo.checList1(flux2, f));
+        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemo.checkList1(flux2, f));
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
                 .expectNext("apple", "orange")
                 .verifyComplete();
     }
 
-    private static Mono<Boolean> checList1(Flux<String> flux, String fruit) {
+    private static Mono<Boolean> checkList1(Flux<String> flux, String fruit) {
         return flux.hasElement(fruit);
     }
 
@@ -312,14 +312,14 @@ public class ReactorDemo {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         Flux<String> flux2 = Flux.just("apple", "orange").log();
 
-        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemo.checList2(flux2, f));
+        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemo.checkList2(flux2, f));
         diffFlux.subscribe(System.out::println);
         StepVerifier.create(diffFlux)
                 .expectNext("banana")
                 .verifyComplete();
     }
 
-    private static Mono<Boolean> checList2(Flux<String> flux, String fruit) {
+    private static Mono<Boolean> checkList2(Flux<String> flux, String fruit) {
         return flux.hasElement(fruit)
                 .map(hasElement -> !hasElement);
     }
