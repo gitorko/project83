@@ -16,6 +16,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -23,6 +24,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.Exceptions;
 import reactor.core.publisher.BaseSubscriber;
@@ -135,7 +137,7 @@ public class ReactorDemo {
         Flux<Integer> flux1 = Flux.fromArray(arr);
         flux1.subscribe(System.out::println);
         StepVerifier.create(flux1)
-                .expectNext(2,5,7,8)
+                .expectNext(2, 5, 7, 8)
                 .verifyComplete();
 
         List<String> fruitsList = Arrays.asList("apple", "oranges", "grapes");
@@ -148,7 +150,7 @@ public class ReactorDemo {
         Flux<Integer> flux2 = Flux.fromStream(() -> stream);
         //Stream can be consumed only once
         StepVerifier.create(flux2)
-                .expectNext(1,2,3,4,5)
+                .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
@@ -165,7 +167,7 @@ public class ReactorDemo {
                 .log();
         flux1.subscribe(System.out::println);
         StepVerifier.create(flux1)
-                .expectNext(103,104)
+                .expectNext(103, 104)
                 .verifyComplete();
 
         Flux<Integer> numbers = Flux.range(1, 5);
@@ -277,6 +279,49 @@ public class ReactorDemo {
 
     private static Mono<String> capitalize(String user) {
         return Mono.just(user.toUpperCase());
+    }
+
+    /**
+     * ********************************************************************
+     *  intersect - compare 2 flux for common
+     * ********************************************************************
+     */
+    @Test
+    void fluxIntersectCommon() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
+        Flux<String> flux2 = Flux.just("apple", "orange").log();
+
+        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemo.checList1(flux2, f));
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
+                .verifyComplete();
+    }
+
+    private static Mono<Boolean> checList1(Flux<String> flux, String fruit) {
+        return flux.hasElement(fruit);
+    }
+
+    /**
+     * ********************************************************************
+     *  intersect - compare 2 flux for diff
+     * ********************************************************************
+     */
+    @Test
+    void fluxIntersectDiff() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
+        Flux<String> flux2 = Flux.just("apple", "orange").log();
+
+        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemo.checList2(flux2, f));
+        diffFlux.subscribe(System.out::println);
+        StepVerifier.create(diffFlux)
+                .expectNext("banana")
+                .verifyComplete();
+    }
+
+    private static Mono<Boolean> checList2(Flux<String> flux, String fruit) {
+        return flux.hasElement(fruit)
+                .map(hasElement -> !hasElement);
     }
 
     /**
@@ -832,7 +877,7 @@ public class ReactorDemo {
         Flux flux3 = aMono.mergeWith(bMono);
         flux3.subscribe(System.out::println);
         StepVerifier.create(flux3)
-                .expectNext("a","b")
+                .expectNext("a", "b")
                 .verifyComplete();
 
     }
@@ -1306,7 +1351,6 @@ public class ReactorDemo {
                 .expectNext("BC", "BD")
                 .verifyComplete();
     }
-
 
 
     @Test
