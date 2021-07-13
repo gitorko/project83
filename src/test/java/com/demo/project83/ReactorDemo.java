@@ -16,7 +16,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -24,7 +23,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.Exceptions;
 import reactor.core.publisher.BaseSubscriber;
@@ -283,13 +281,14 @@ public class ReactorDemo {
 
     /**
      * ********************************************************************
-     *  intersect - compare 2 flux for common
+     *  intersect with filterWhen - compare 2 flux for common
      * ********************************************************************
      */
     @Test
     void fluxIntersectCommon() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
-        Flux<String> flux2 = Flux.just("apple", "orange").log();
+        //Without cache on flux2 it will subscribe many times.
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
         Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemo.checkList1(flux2, f));
         commonFlux.subscribe(System.out::println);
@@ -299,18 +298,38 @@ public class ReactorDemo {
     }
 
     private static Mono<Boolean> checkList1(Flux<String> flux, String fruit) {
-        return flux.hasElement(fruit);
+        return Mono.just(flux.toStream().anyMatch(e -> e.equals(fruit)));
     }
 
     /**
      * ********************************************************************
-     *  intersect - compare 2 flux for diff
+     *  intersect with filter - compare 2 flux for common
+     * ********************************************************************
+     */
+    @Test
+    void fluxIntersectCommon2() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
+        //Without cache on flux2 it will subscribe many times.
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
+        Flux<String> commonFlux = flux1.filter(f -> {
+            return flux2.toStream().anyMatch(e -> e.equals(f));
+        });
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  intersect with filterWhen - compare 2 flux for diff
      * ********************************************************************
      */
     @Test
     void fluxIntersectDiff() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
-        Flux<String> flux2 = Flux.just("apple", "orange").log();
+        //Without cache on flux2 it will subscribe many times.
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
         Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemo.checkList2(flux2, f));
         diffFlux.subscribe(System.out::println);
@@ -320,8 +339,26 @@ public class ReactorDemo {
     }
 
     private static Mono<Boolean> checkList2(Flux<String> flux, String fruit) {
-        return flux.hasElement(fruit)
-                .map(hasElement -> !hasElement);
+        return Mono.just(flux.toStream().anyMatch(e -> e.equals(fruit))).map(hasElement -> !hasElement);
+    }
+
+    /**
+     * ********************************************************************
+     *  intersect with filter - compare 2 flux for diff
+     * ********************************************************************
+     */
+    @Test
+    void fluxIntersectDiff2() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
+        //Without cache on flux2 it will subscribe many times.
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
+        Flux<String> commonFlux = flux1.filter(f -> {
+            return !flux2.toStream().anyMatch(e -> e.equals(f));
+        });
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("banana")
+                .verifyComplete();
     }
 
     /**
