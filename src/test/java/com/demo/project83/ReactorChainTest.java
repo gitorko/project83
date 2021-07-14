@@ -10,18 +10,18 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 @Slf4j
-public class ReactorChain {
+public class ReactorChainTest {
 
     @Test
     public void test() {
         CompanyVO request = new CompanyVO();
         request.setName("Twitter");
         Mono.just(request)
-                .map(ReactorChain::convertToEntity)
-                .zipWith(ReactorChain.getNameSuffix(), ReactorChain::appendSuffix)
-                .flatMap(ReactorChain::addCompanyOwner)
-                .flatMap(ReactorChain::appendOrgIdToDepartment)
-                .flatMap(ReactorChain::save)
+                .map(ReactorChainTest::convertToEntity)
+                .zipWith(ReactorChainTest.getNameSuffix(), ReactorChainTest::appendSuffix)
+                .flatMap(ReactorChainTest::addCompanyOwner)
+                .flatMap(ReactorChainTest::appendOrgIdToDepartment)
+                .flatMap(ReactorChainTest::save)
                 .subscribe(System.out::println);
     }
 

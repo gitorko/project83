@@ -99,8 +99,8 @@ public class ReactorObjectTest {
                 .map(GroupedFlux::key);
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
-                .expectNext(ProjectEntity.builder().entityName("p5").build())
                 .expectNext(ProjectEntity.builder().entityName("p1").build())
+                .expectNext(ProjectEntity.builder().entityName("p5").build())
                 .verifyComplete();
     }
 

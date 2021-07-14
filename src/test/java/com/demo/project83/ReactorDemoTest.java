@@ -36,7 +36,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Slf4j
-public class ReactorDemo {
+public class ReactorDemoTest {
 
     /**
      * ********************************************************************
@@ -203,14 +203,14 @@ public class ReactorDemo {
     void flatMapTest() {
         //Modification of object in chain - done via flatMap
         Mono<String> mono1 = Mono.just("Jack")
-                .flatMap(ReactorDemo::appendGreet);
+                .flatMap(ReactorDemoTest::appendGreet);
         StepVerifier.create(mono1)
                 .expectNext("Hello Jack")
                 .verifyComplete();
 
         //Modification of object in chain - done via zipWith
         Mono<String> mono2 = Mono.just("Jack")
-                .zipWith(Mono.just("Hello "), ReactorDemo::getGreet);
+                .zipWith(Mono.just("Hello "), ReactorDemoTest::getGreet);
         StepVerifier.create(mono2)
                 .expectNext("Hello Jack")
                 .verifyComplete();
@@ -257,7 +257,7 @@ public class ReactorDemo {
                 .expectNextCount(3)
                 .verifyComplete();
 
-        Flux flux3 = Flux.just("Jack", "Jill").flatMap(ReactorDemo::capitalize);
+        Flux flux3 = Flux.just("Jack", "Jill").flatMap(ReactorDemoTest::capitalize);
         flux3.subscribe(System.out::println);
         StepVerifier.create(flux3)
                 .expectSubscription()
@@ -290,7 +290,7 @@ public class ReactorDemo {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
-        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemo.checkList1(flux2, f));
+        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemoTest.checkList1(flux2, f));
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
                 .expectNext("apple", "orange")
@@ -331,7 +331,7 @@ public class ReactorDemo {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
-        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemo.checkList2(flux2, f));
+        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemoTest.checkList2(flux2, f));
         diffFlux.subscribe(System.out::println);
         StepVerifier.create(diffFlux)
                 .expectNext("banana")
@@ -543,7 +543,7 @@ public class ReactorDemo {
     void errorPropogate() {
         Flux flux = Flux.just("Jack", "Jill").map(u -> {
             try {
-                return ReactorDemo.checkName(u);
+                return ReactorDemoTest.checkName(u);
             } catch (CustomException e) {
                 throw Exceptions.propagate(e);
             }
@@ -711,8 +711,8 @@ public class ReactorDemo {
     void thenManyChainTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemo.deleteFromDb())
-                .thenMany(ReactorDemo.saveToDb())
+                .thenMany(ReactorDemoTest.deleteFromDb())
+                .thenMany(ReactorDemoTest.saveToDb())
                 .subscribe(System.out::println);
     }
 
@@ -732,8 +732,8 @@ public class ReactorDemo {
     void thenEmpty() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemo.saveToDb())
-                .thenEmpty(ReactorDemo.sendMail())
+                .thenMany(ReactorDemoTest.saveToDb())
+                .thenEmpty(ReactorDemoTest.sendMail())
                 .subscribe(System.out::println);
     }
 
@@ -741,7 +741,7 @@ public class ReactorDemo {
     void then() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemo.saveToDb())
+                .thenMany(ReactorDemoTest.saveToDb())
                 .then()
                 .then(Mono.just("Ram"))
                 .thenReturn("Done!")
