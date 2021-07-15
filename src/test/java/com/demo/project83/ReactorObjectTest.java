@@ -1,13 +1,19 @@
 package com.demo.project83;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
+import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -104,6 +110,24 @@ public class ReactorObjectTest {
                 .verifyComplete();
     }
 
+    @Test
+    void postGetAllTest() {
+        DbService service = new DbService();
+        Flux<Post> postFlux = service.getAllPosts()
+                .flatMap(post -> {
+                    Mono<List<Comment>> commentMono = service.getPostById(post.id).collectList();
+                    return commentMono.map(comments -> Post.builder()
+                            .id(post.id)
+                            .message(post.message)
+                            .user(post.user)
+                            .comments(comments)
+                            .build());
+                });
+        StepVerifier.create(postFlux)
+                .expectNextCount(2)
+                .verifyComplete();
+    }
+
 }
 
 @Data
@@ -118,4 +142,48 @@ class ProjectDTO {
 class ProjectEntity {
     String entityName;
     String dbField;
+}
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+class Post {
+    Long id;
+    String message;
+    String user;
+    @Builder.Default
+    List<Comment> comments = new ArrayList<>();
+}
+
+@Data
+@AllArgsConstructor
+@RequiredArgsConstructor
+@Builder
+class Comment {
+    Long id;
+    Long postId;
+    String comment;
+    String user;
+}
+
+class DbService {
+    Flux<Post> postFlux = Flux.fromIterable(List.of(
+            Post.builder().id(1l).message("post 1").user("jack").build(),
+            Post.builder().id(2l).message("post 2").user("jill").build()));
+
+    Flux<Comment> commentFlux = Flux.fromIterable(List.of(
+            Comment.builder().id(1l).postId(1l).comment("comment 1").user("adam").build(),
+            Comment.builder().id(2l).postId(2l).comment("comment 2").user("jane").build(),
+            Comment.builder().id(3l).postId(3l).comment("comment 3").user("raj").build()));
+
+    //Get all posts
+    Flux<Post> getAllPosts() {
+        return postFlux;
+    }
+
+    //Get all reviews associated with the post.
+    Flux<Comment> getPostById(long id) {
+        return commentFlux.filter(e -> e.postId == id);
+    }
 }

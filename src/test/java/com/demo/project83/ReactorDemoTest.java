@@ -820,7 +820,9 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  transform
+     *  transform - accepts a Function functional interface.
+     *  input is flux/mono
+     *  output is flux/mono
      * ********************************************************************
      */
     @Test
@@ -1335,6 +1337,12 @@ public class ReactorDemoTest {
         TimeUnit.SECONDS.sleep(5);
     }
 
+    /**
+     * ********************************************************************
+     *  switchIfEmpty - similar to defaultIfEmpty but return flux/mono
+     *  defaultIfEmpty - return a fixed value.
+     * ********************************************************************
+     */
     @Test
     @SneakyThrows
     void switchTest() {
