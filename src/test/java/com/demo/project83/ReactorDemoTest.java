@@ -150,6 +150,12 @@ public class ReactorDemoTest {
         StepVerifier.create(flux2)
                 .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
+
+        Flux<Integer> flux3 = Flux.fromIterable(List.of(1, 2, 3, 4, 5));
+        //Stream can be consumed only once
+        StepVerifier.create(flux3)
+                .expectNext(1, 2, 3, 4, 5)
+                .verifyComplete();
     }
 
     /**
@@ -200,8 +206,27 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void flatMapTest() {
+    void flatMapTest1() {
+
+        Flux flux1 = Flux.just("Jack", "Jill").flatMap(ReactorDemoTest::capitalizeReactive);
+        flux1.subscribe(System.out::println);
+        StepVerifier.create(flux1)
+                .expectSubscription()
+                .expectNext("JACK")
+                .expectNext("JILL")
+                .verifyComplete();
+
+        //Map is for simple objects
+        Flux flux2 = Flux.just("Jack", "Jill").map(ReactorDemoTest::capitalize);
+        flux2.subscribe(System.out::println);
+        StepVerifier.create(flux2)
+                .expectSubscription()
+                .expectNext("JACK")
+                .expectNext("JILL")
+                .verifyComplete();
+
         //Modification of object in chain - done via flatMap
+        //Ideally create a new object instead of modifying the existing object.
         Mono<String> mono1 = Mono.just("Jack")
                 .flatMap(ReactorDemoTest::appendGreet);
         StepVerifier.create(mono1)
@@ -214,6 +239,14 @@ public class ReactorDemoTest {
         StepVerifier.create(mono2)
                 .expectNext("Hello Jack")
                 .verifyComplete();
+    }
+
+    private static Mono<String> capitalizeReactive(String user) {
+        return Mono.just(user.toUpperCase());
+    }
+
+    private static String capitalize(String user) {
+        return user.toUpperCase();
     }
 
     private static Mono<String> appendGreet(String name) {
@@ -230,7 +263,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void flatMap2Test() {
+    void flatMapTest2() {
         Flux<String> flux = Flux.fromIterable(List.of("Jack", "Joe", "Jill"))
                 .map(String::toUpperCase)
                 .filter(s -> s.length() > 3)
@@ -257,14 +290,6 @@ public class ReactorDemoTest {
                 .expectNextCount(3)
                 .verifyComplete();
 
-        Flux flux3 = Flux.just("Jack", "Jill").flatMap(ReactorDemoTest::capitalize);
-        flux3.subscribe(System.out::println);
-        StepVerifier.create(flux3)
-                .expectSubscription()
-                .expectNext("JACK")
-                .expectNext("JILL")
-                .verifyComplete();
-
     }
 
     private Flux<String> splitString(String name) {
@@ -273,10 +298,6 @@ public class ReactorDemoTest {
 
     private Flux<Integer> getSomeFlux(Integer i) {
         return Flux.range(i, 10);
-    }
-
-    private static Mono<String> capitalize(String user) {
-        return Mono.just(user.toUpperCase());
     }
 
     /**
@@ -298,6 +319,7 @@ public class ReactorDemoTest {
     }
 
     private static Mono<Boolean> checkList1(Flux<String> flux, String fruit) {
+        //toStream will block so should be avoided. Look at ReactorObjectTest for better approach.
         return Mono.just(flux.toStream().anyMatch(e -> e.equals(fruit)));
     }
 
@@ -312,6 +334,7 @@ public class ReactorDemoTest {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
         Flux<String> commonFlux = flux1.filter(f -> {
+            //toStream will block so should be avoided. Look at ReactorObjectTest for better approach.
             return flux2.toStream().anyMatch(e -> e.equals(f));
         });
         commonFlux.subscribe(System.out::println);
@@ -339,6 +362,7 @@ public class ReactorDemoTest {
     }
 
     private static Mono<Boolean> checkList2(Flux<String> flux, String fruit) {
+        //toStream will block so should be avoided. Look at ReactorObjectTest for better approach.
         return Mono.just(flux.toStream().anyMatch(e -> e.equals(fruit))).map(hasElement -> !hasElement);
     }
 
@@ -353,6 +377,7 @@ public class ReactorDemoTest {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
         Flux<String> commonFlux = flux1.filter(f -> {
+            //toStream will block so should be avoided. Look at ReactorObjectTest for better approach.
             return !flux2.toStream().anyMatch(e -> e.equals(f));
         });
         commonFlux.subscribe(System.out::println);
@@ -397,8 +422,7 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  concatMap - Same as flatMap but order is preserved.
-     *  concatMap takes more time but ordering is preserved.
+     *  concatMap - Same as flatMap but order is preserved, concatMap takes more time but ordering is preserved.
      *  flatMap takes less time but ordering is lost.
      * ********************************************************************
      */
@@ -435,7 +459,7 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  tuple
+     *  index
      * ********************************************************************
      */
     @Test
@@ -474,11 +498,11 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  flux to mono list
+     *  collectList & collectSortedList- flux to mono of list
      * ********************************************************************
      */
     @Test
-    void fluxToMonoList() {
+    void collectListTest() {
         Flux<String> flux = Flux.just("Jack", "Jill");
         Mono<List<String>> mono = flux.collectList();
         mono.subscribe(System.out::println);
@@ -499,6 +523,76 @@ public class ReactorDemoTest {
         StepVerifier.create(listMono2)
                 .expectNext(Arrays.asList(1, 2, 3, 4, 5))
                 .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  collectList
+     * ********************************************************************
+     */
+    @Test
+    void collectListTest2() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:apple");
+        //Convert flux to list and iterate over it.
+        flux.collectList()
+                .flatMap(e -> {
+                    e.forEach(System.out::println);
+                    return Mono.empty();
+                })
+                .subscribe();
+
+        flux.collectSortedList()
+                .flatMap(e -> {
+                    e.forEach(System.out::println);
+                    return Mono.empty();
+                })
+                .subscribe();
+
+        //Dont use infinite flux, will never return.
+        //Flux.interval(Duration.ofMillis(1000)).collectList().subscribe();
+
+        List<String> list3 = new ArrayList<>();
+        flux.collectList().subscribe(list3::addAll);
+        list3.forEach(System.out::println);
+    }
+
+    /**
+     * ********************************************************************
+     *  collectMap
+     * ********************************************************************
+     */
+    @Test
+    void collectMapTest() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:apple");
+        Map<String, String> map1 = new HashMap<>();
+        flux.collectMap(
+                item -> item.split(":")[0],
+                item -> item.split(":")[1])
+                .subscribe(map1::putAll);
+        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
+    }
+
+    /**
+     * ********************************************************************
+     *  collectMultimap
+     * ********************************************************************
+     */
+    @Test
+    void collectMultimapTest() {
+        Flux<String> flux = Flux.just(
+                "yellow:banana",
+                "red:grapes",
+                "red:apple");
+        Map<String, Collection<String>> map1 = new HashMap<>();
+        flux.collectMultimap(
+                item -> item.split(":")[0],
+                item -> item.split(":")[1])
+                .subscribe(map1::putAll);
+        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
     }
 
     /**
@@ -536,11 +630,11 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  flux error propogate
+     *  flux error propagate
      * ********************************************************************
      */
     @Test
-    void errorPropogate() {
+    void errorPropagate() {
         Flux flux = Flux.just("Jack", "Jill").map(u -> {
             try {
                 return ReactorDemoTest.checkName(u);
@@ -750,76 +844,6 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  collectList
-     * ********************************************************************
-     */
-    @Test
-    void collectListTest() {
-        Flux<String> flux = Flux.just(
-                "yellow:banana",
-                "red:apple");
-        //Convert flux to list and iterate over it.
-        flux.collectList()
-                .flatMap(e -> {
-                    e.forEach(System.out::println);
-                    return Mono.empty();
-                })
-                .subscribe();
-
-        flux.collectSortedList()
-                .flatMap(e -> {
-                    e.forEach(System.out::println);
-                    return Mono.empty();
-                })
-                .subscribe();
-
-        //Dont use infinite flux, will never return.
-        //Flux.interval(Duration.ofMillis(1000)).collectList().subscribe();
-
-        List<String> list3 = new ArrayList<>();
-        flux.collectList().subscribe(list3::addAll);
-        list3.forEach(System.out::println);
-    }
-
-    /**
-     * ********************************************************************
-     *  collectMap
-     * ********************************************************************
-     */
-    @Test
-    void collectMapTest() {
-        Flux<String> flux = Flux.just(
-                "yellow:banana",
-                "red:apple");
-        Map<String, String> map1 = new HashMap<>();
-        flux.collectMap(
-                item -> item.split(":")[0],
-                item -> item.split(":")[1])
-                .subscribe(map1::putAll);
-        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
-    }
-
-    /**
-     * ********************************************************************
-     *  collectMultimap
-     * ********************************************************************
-     */
-    @Test
-    void collectMultimapTest() {
-        Flux<String> flux = Flux.just(
-                "yellow:banana",
-                "red:grapes",
-                "red:apple");
-        Map<String, Collection<String>> map1 = new HashMap<>();
-        flux.collectMultimap(
-                item -> item.split(":")[0],
-                item -> item.split(":")[1])
-                .subscribe(map1::putAll);
-        map1.forEach((key, value) -> System.out.println(key + " -> " + value));
-    }
-
-    /**
-     * ********************************************************************
      *  transform - accepts a Function functional interface.
      *  input is flux/mono
      *  output is flux/mono
@@ -923,33 +947,6 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  concatWith - works with mono and flux.
-     * ********************************************************************
-     */
-    @Test
-    @SneakyThrows
-    void concatWithTest() {
-        Flux<String> flux1 = Flux.just("a", "b");
-        Flux<String> flux2 = Flux.just("c", "d");
-        //Lazy will wait till first flux finishes.
-        Flux<String> flux = flux1.concatWith(flux2).log();
-        StepVerifier.create(flux)
-                .expectSubscription()
-                .expectNext("a", "b", "c", "d")
-                .verifyComplete();
-
-        Mono<String> aFlux = Mono.just("a");
-        Mono<String> bFlux = Mono.just("b");
-        Flux<String> stringFlux = aFlux.concatWith(bFlux);
-        stringFlux.subscribe(System.out::println);
-        StepVerifier.create(stringFlux)
-                .expectNext("a", "b")
-                .verifyComplete();
-
-    }
-
-    /**
-     * ********************************************************************
      *  concat - Only for flux. Not available for mono
      * ********************************************************************
      */
@@ -973,6 +970,32 @@ public class ReactorDemoTest {
         StepVerifier.create(flux6)
                 .expectSubscription()
                 .expectNext("a", "b", "c", "d")
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  concatWith - works with mono and flux.
+     * ********************************************************************
+     */
+    @Test
+    @SneakyThrows
+    void concatWithTest() {
+        Flux<String> flux1 = Flux.just("a", "b");
+        Flux<String> flux2 = Flux.just("c", "d");
+        //Lazy will wait till first flux finishes.
+        Flux<String> flux = flux1.concatWith(flux2).log();
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNext("a", "b", "c", "d")
+                .verifyComplete();
+
+        Mono<String> aFlux = Mono.just("a");
+        Mono<String> bFlux = Mono.just("b");
+        Flux<String> stringFlux = aFlux.concatWith(bFlux);
+        stringFlux.subscribe(System.out::println);
+        StepVerifier.create(stringFlux)
+                .expectNext("a", "b")
                 .verifyComplete();
     }
 
@@ -1060,7 +1083,7 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  mono first
+     *  firstWithValue - first mono to return
      * ********************************************************************
      */
     @Test
@@ -1093,6 +1116,34 @@ public class ReactorDemoTest {
                 .expectNext(Arrays.asList(7))
                 .verifyComplete();
 
+    }
+
+    /**
+     * ********************************************************************
+     *  doOn operators
+     * ********************************************************************
+     */
+    @Test
+    void doOnNextChain() {
+        Mono<Object> helloMono = Mono.just("Jack")
+                .log()
+                .map(String::toUpperCase)
+                .doOnSubscribe(s -> log.info("Subscribed!"))
+                .doOnRequest(s -> log.info("Requested!"))
+                .doOnNext(s -> log.info("Value: {}", s))
+                .flatMap(s -> Mono.empty())
+                .doOnNext(s -> log.info("Value: {}", s)) //Will not be executed.
+                .doOnSuccess(s -> log.info("Do on success {}", s))
+                .doFinally(s -> log.info("Do on finally {}", s));
+        helloMono.subscribe(s -> {
+                    log.info("Got: {}", s);
+                },
+                Throwable::printStackTrace,
+                () -> log.info("Finished"),
+                Subscription::cancel
+        );
+        StepVerifier.create(helloMono)
+                .verifyComplete();
     }
 
     @Test
@@ -1184,34 +1235,6 @@ public class ReactorDemoTest {
 
         StepVerifier.create(helloMono)
                 .expectNext("Jack".toUpperCase())
-                .verifyComplete();
-    }
-
-    /**
-     * ********************************************************************
-     *  doOn operators
-     * ********************************************************************
-     */
-    @Test
-    void doOnNextChain() {
-        Mono<Object> helloMono = Mono.just("Jack")
-                .log()
-                .map(String::toUpperCase)
-                .doOnSubscribe(s -> log.info("Subscribed!"))
-                .doOnRequest(s -> log.info("Requested!"))
-                .doOnNext(s -> log.info("Value: {}", s))
-                .flatMap(s -> Mono.empty())
-                .doOnNext(s -> log.info("Value: {}", s)) //Will not be executed.
-                .doOnSuccess(s -> log.info("Do on success {}", s))
-                .doFinally(s -> log.info("Do on finally {}", s));
-        helloMono.subscribe(s -> {
-                    log.info("Got: {}", s);
-                },
-                Throwable::printStackTrace,
-                () -> log.info("Finished"),
-                Subscription::cancel
-        );
-        StepVerifier.create(helloMono)
                 .verifyComplete();
     }
 
