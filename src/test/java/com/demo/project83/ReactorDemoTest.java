@@ -1420,7 +1420,6 @@ public class ReactorDemoTest {
                 .verifyComplete();
     }
 
-
     @Test
     public void monoSupplier() {
         Supplier<String> stringSupplier = () -> getName();
