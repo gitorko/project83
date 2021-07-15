@@ -212,6 +212,7 @@ class DbService {
     }
 
     Mono<Post> getPostById(long id) {
+        //Take the first element in the flux.
         return postFlux.filter(e -> e.id == id).next();
     }
 

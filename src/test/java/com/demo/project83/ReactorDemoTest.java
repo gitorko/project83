@@ -1120,7 +1120,7 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  doOn operators
+     *  doOn operators - No side affect operators
      * ********************************************************************
      */
     @Test
