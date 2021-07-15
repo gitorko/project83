@@ -1,5 +1,7 @@
 package com.demo.project83;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -65,13 +67,13 @@ public class ReactorObjectTest {
         );
 
         Flux<ProjectEntity> commonFlux = fluxFromRequest
-            .map(dto -> dto.getName())
-            .collect(Collectors.toSet())
-            .flatMapMany(set -> {
+                .map(dto -> dto.getName())
+                .collect(Collectors.toSet())
+                .flatMapMany(set -> {
                     return fluxFromDb
-                        //Filter out matching
-                        //Limitation is that you can only compare 1 value collected in set.
-                        .filter(t -> set.contains(t.getEntityName()));
+                            //Filter out matching
+                            //Limitation is that you can only compare 1 value collected in set.
+                            .filter(t -> set.contains(t.getEntityName()));
                 });
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
@@ -115,7 +117,7 @@ public class ReactorObjectTest {
         DbService service = new DbService();
         Flux<Post> postFlux = service.getAllPosts()
                 .flatMap(post -> {
-                    Mono<List<Comment>> commentMono = service.getPostById(post.id).collectList();
+                    Mono<List<Comment>> commentMono = service.getCommentByPostId(post.id).collectList();
                     return commentMono.map(comments -> Post.builder()
                             .id(post.id)
                             .message(post.message)
@@ -124,7 +126,34 @@ public class ReactorObjectTest {
                             .build());
                 });
         StepVerifier.create(postFlux)
-                .expectNextCount(2)
+                .assertNext(post -> {
+                    assertEquals("post 1", post.getMessage());
+                    assertEquals(1, post.getComments().size());
+                })
+                .assertNext(post -> {
+                    assertEquals("post 2", post.getMessage());
+                    assertEquals(2, post.getComments().size());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void postGetByIdTest() {
+        DbService service = new DbService();
+        Mono<List<Comment>> commentMono = service.getCommentByPostId(1l).collectList();
+        Mono<Post> getByIdMono = service.getPostById(1l).zipWith(commentMono, (post, comments) -> {
+            return Post.builder()
+                    .id(post.id)
+                    .message(post.message)
+                    .user(post.user)
+                    .comments(comments)
+                    .build();
+        });
+        StepVerifier.create(getByIdMono)
+                .assertNext(post -> {
+                    assertEquals("post 1", post.getMessage());
+                    assertEquals(1, post.getComments().size());
+                })
                 .verifyComplete();
     }
 
@@ -175,15 +204,19 @@ class DbService {
     Flux<Comment> commentFlux = Flux.fromIterable(List.of(
             Comment.builder().id(1l).postId(1l).comment("comment 1").user("adam").build(),
             Comment.builder().id(2l).postId(2l).comment("comment 2").user("jane").build(),
-            Comment.builder().id(3l).postId(3l).comment("comment 3").user("raj").build()));
+            Comment.builder().id(3l).postId(2l).comment("comment 3").user("raj").build()));
 
     //Get all posts
     Flux<Post> getAllPosts() {
         return postFlux;
     }
 
+    Mono<Post> getPostById(long id) {
+        return postFlux.filter(e -> e.id == id).next();
+    }
+
     //Get all reviews associated with the post.
-    Flux<Comment> getPostById(long id) {
+    Flux<Comment> getCommentByPostId(long id) {
         return commentFlux.filter(e -> e.postId == id);
     }
 }
