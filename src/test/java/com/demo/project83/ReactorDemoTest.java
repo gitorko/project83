@@ -1458,6 +1458,11 @@ public class ReactorDemoTest {
 
     }
 
+    /**
+     * ********************************************************************
+     *  combineLatest - will change order based on time. Rarely used.
+     * ********************************************************************
+     */
     @Test
     void combineLatestTest() {
         Flux<String> flux1 = Flux.just("a", "b");
