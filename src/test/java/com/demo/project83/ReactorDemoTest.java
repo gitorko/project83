@@ -306,7 +306,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxIntersectCommon() {
+    void fluxIntersectCommonTest() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
@@ -329,7 +329,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxIntersectCommon2() {
+    void fluxIntersectCommon2Test() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
@@ -349,7 +349,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxIntersectDiff() {
+    void fluxIntersectDiffTest() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
@@ -372,7 +372,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxIntersectDiff2() {
+    void fluxIntersectDiff2Test() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
@@ -449,7 +449,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    public void startWith() {
+    public void startWithTest() {
         Flux<Integer> flux = Flux.range(1, 3);
         Flux<Integer> integerFlux = flux.startWith(0);
         StepVerifier.create(integerFlux)
@@ -463,7 +463,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxIndex() {
+    void fluxIndexTest() {
         //append a number to each element.
         Flux<Tuple2<Long, String>> index = Flux
                 .just("apple", "banana", "orange")
@@ -601,7 +601,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void monoError() {
+    void monoErrorTest() {
         Mono<Object> mono = Mono.error(new RuntimeException("My Error"))
                 .onErrorReturn("Jack");
         mono.subscribe(System.out::println);
@@ -634,7 +634,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void errorPropagate() {
+    void errorPropagateTest() {
         Flux flux = Flux.just("Jack", "Jill").map(u -> {
             try {
                 return ReactorDemoTest.checkName(u);
@@ -661,12 +661,12 @@ public class ReactorDemoTest {
 
     /**
      * ********************************************************************
-     *  flux that emits every second.
+     *  withVirtualTime - flux that emits every second.
      * ********************************************************************
      */
     @Test
     @SneakyThrows
-    void fluxIntervalTake() {
+    void fluxIntervalTakeTest() {
         Flux<Long> interval = Flux.interval(Duration.ofSeconds(1))
                 .log()
                 .take(10);
@@ -686,7 +686,7 @@ public class ReactorDemoTest {
      */
     @Test
     @SneakyThrows
-    void fluxIntervalVirtualTime() {
+    void fluxIntervalVirtualTimeTest() {
         StepVerifier.withVirtualTime(this::getTake)
                 .expectSubscription()
                 .expectNoEvent(Duration.ofDays(1))
@@ -710,7 +710,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxError() {
+    void fluxErrorTest() {
         Flux flux = Flux.error(new RuntimeException("My Error"));
         flux.subscribe(
                 onNext(),
@@ -773,7 +773,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void fluxStepVerify() {
+    void fluxStepVerifyTest() {
         Flux flux = Flux.fromIterable(Arrays.asList("Jack", "Jill"));
         StepVerifier.create(flux)
                 .expectNextMatches(user -> user.equals("Jack"))
@@ -823,7 +823,7 @@ public class ReactorDemoTest {
     }
 
     @Test
-    void thenEmpty() {
+    void thenEmptyTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
                 .thenMany(ReactorDemoTest.saveToDb())
@@ -832,7 +832,7 @@ public class ReactorDemoTest {
     }
 
     @Test
-    void then() {
+    void thenTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
                 .thenMany(ReactorDemoTest.saveToDb())
@@ -1087,7 +1087,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void monoFirst() {
+    void monoFirstTest() {
         Mono<String> mono1 = Mono.just("Jack").delayElement(Duration.ofSeconds(1));
         Mono<String> mono2 = Mono.just("Jill");
         //Return the mono which returns its value faster
@@ -1104,7 +1104,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    public void bufferGroup() {
+    public void bufferGroupTest() {
         Flux<List<Integer>> buffer = Flux
                 .range(1, 7)
                 .buffer(2);
@@ -1124,7 +1124,7 @@ public class ReactorDemoTest {
      * ********************************************************************
      */
     @Test
-    void doOnNextChain() {
+    void doOnChainTest() {
         Mono<Object> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase)
@@ -1139,16 +1139,37 @@ public class ReactorDemoTest {
                     log.info("Got: {}", s);
                 },
                 Throwable::printStackTrace,
-                () -> log.info("Finished"),
-                Subscription::cancel
+                () -> log.info("Finished")
         );
-        StepVerifier.create(helloMono)
-                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  expectError
+     * ********************************************************************
+     */
+    @Test
+    public void expectErrorTest() {
+        Flux<Integer> indexFlux = Flux.range(1, 5)
+                .map(i -> {
+                    if (i == 4) {
+                        throw new IndexOutOfBoundsException("index error");
+                    }
+                    return i;
+                });
+        indexFlux
+                .doOnError(Throwable::printStackTrace)
+                .subscribe(System.out::println);
+
+        StepVerifier.create(indexFlux)
+                .expectNext(1,2,3)
+                .expectError(IndexOutOfBoundsException.class)
+                .verify();
     }
 
     @Test
     @SneakyThrows
-    public void tickClock() {
+    public void tickClockTest() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         Flux.merge(fastClock, slowClock).subscribe(System.out::println);
@@ -1157,7 +1178,7 @@ public class ReactorDemoTest {
 
     @Test
     @SneakyThrows
-    public void tickMergeClock() {
+    public void tickMergeClockTest() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         Flux clock = Flux.merge(slowClock, fastClock);
@@ -1168,7 +1189,7 @@ public class ReactorDemoTest {
 
     @Test
     @SneakyThrows
-    public void tickZipClock() {
+    public void tickZipClockTest() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         fastClock.zipWith(slowClock, (tick, time) -> tick + " " + time).subscribe(System.out::println);
@@ -1201,8 +1222,13 @@ public class ReactorDemoTest {
 
     }
 
+    /**
+     * ********************************************************************
+     *  cancel subscription
+     * ********************************************************************
+     */
     @Test
-    void monoCancelSubscription() {
+    void monoCancelSubscriptionTest() {
         Mono<String> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase);
@@ -1213,33 +1239,35 @@ public class ReactorDemoTest {
                 () -> log.info("Finished"),
                 Subscription::cancel
         );
-        StepVerifier.create(helloMono)
-                .expectNext("Jack".toUpperCase())
-                .verifyComplete();
+
     }
 
+    /**
+     * ********************************************************************
+     *  cancel subscription after n elements
+     * ********************************************************************
+     */
     @Test
-    void monoCompleteSubscriptionRequestBounded() {
-        Mono<String> helloMono = Mono.just("Jack")
+    void monoCompleteSubscriptionRequestBoundedTest() {
+        //Jill wont be fetched as subscription will be cancelled after 2 elements
+        Flux<String> namesMono = Flux.just("Jack", "Jane", "Jill")
                 .log()
                 .map(String::toUpperCase);
-        helloMono.subscribe(s -> {
+        namesMono.subscribe(s -> {
                     log.info("Got: {}", s);
                 },
                 Throwable::printStackTrace,
                 () -> log.info("Finished"),
-                subscription -> {
-                    subscription.request(5);
-                }
-        );
-
-        StepVerifier.create(helloMono)
-                .expectNext("Jack".toUpperCase())
-                .verifyComplete();
+                subscription -> subscription.request(2));
     }
 
+    /**
+     * ********************************************************************
+     *  backpressure
+     * ********************************************************************
+     */
     @Test
-    void fluxBackPressure() {
+    void fluxBackPressureTest() {
         Flux<Integer> fluxNumber = Flux.range(1, 5).log();
 
         //Fetches 2 at a time.
@@ -1268,45 +1296,62 @@ public class ReactorDemoTest {
 
     }
 
+    /**
+     * ********************************************************************
+     *  backpressure - limit rate
+     * ********************************************************************
+     */
     @Test
-    void fluxBackPressureLimitRate() {
+    void fluxBackPressureLimitRateTest() {
         Flux<Integer> fluxNumber = Flux.range(1, 5).log().limitRate(3);
         StepVerifier.create(fluxNumber)
                 .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  hot flux
+     * ********************************************************************
+     */
     @Test
     @SneakyThrows
-    void connectableFlux() {
+    void connectableFluxTest() {
         //Hot Flux.
         ConnectableFlux<Integer> connectableFlux = Flux.range(1, 10)
+                .delayElements(Duration.ofMillis(100))
+                .publish();
+        connectableFlux.connect();
+        log.info("Sleeping!");
+        TimeUnit.MILLISECONDS.sleep(300);
+        connectableFlux.subscribe(i -> {
+            log.info("Sub1 Number: {}", i);
+        });
+        TimeUnit.MILLISECONDS.sleep(200);
+        connectableFlux.subscribe(i -> {
+            log.info("Sub2 Number: {}", i);
+        });
+
+        ConnectableFlux<Integer> connectableFlux2 = Flux.range(1, 10)
                 .log()
                 .delayElements(Duration.ofMillis(100))
                 .publish();
-        /*
-                connectableFlux.connect();
-                log.info("Sleeping!");
-                TimeUnit.MILLISECONDS.sleep(300);
-                connectableFlux.subscribe(i -> {
-                    log.info("Sub1 Number: {}", i);
-                });
-                TimeUnit.MILLISECONDS.sleep(200);
-                connectableFlux.subscribe(i -> {
-                    log.info("Sub2 Number: {}", i);
-                });
-        */
-        StepVerifier.create(connectableFlux)
-                .then(connectableFlux::connect)
+        StepVerifier.create(connectableFlux2)
+                .then(connectableFlux2::connect)
                 .thenConsumeWhile(i -> i <= 5)
                 .expectNext(6, 7, 8, 9, 10)
                 .expectComplete()
                 .verify();
     }
 
+    /**
+     * ********************************************************************
+     *  hot flux - auto connect
+     * ********************************************************************
+     */
     @Test
     @SneakyThrows
-    void connectableAutoFlux() {
+    void connectableAutoFluxTest() {
         //Hot Flux.
         Flux<Integer> connectableFlux = Flux.range(1, 5)
                 .log()
@@ -1314,6 +1359,7 @@ public class ReactorDemoTest {
                 .publish()
                 .autoConnect(2);
 
+        //2 subscribers
         StepVerifier.create(connectableFlux)
                 .then(connectableFlux::subscribe)
                 .expectNext(1, 2, 3, 4, 5)
@@ -1321,8 +1367,13 @@ public class ReactorDemoTest {
                 .verify();
     }
 
+    /**
+     * ********************************************************************
+     *  subscribeOn
+     * ********************************************************************
+     */
     @Test
-    void subscribeOn() {
+    void subscribeOnTest() {
         Flux numbFlux = Flux.range(1, 5)
                 .map(i -> {
                     log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
@@ -1335,8 +1386,13 @@ public class ReactorDemoTest {
         numbFlux.subscribe();
     }
 
+    /**
+     * ********************************************************************
+     *  publishOn
+     * ********************************************************************
+     */
     @Test
-    void publishOn() {
+    void publishOnTest() {
         Flux numbFlux = Flux.range(1, 5)
                 .map(i -> {
                     log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
@@ -1347,17 +1403,6 @@ public class ReactorDemoTest {
                     return i;
                 });
         numbFlux.subscribe();
-    }
-
-    @Test
-    @SneakyThrows
-    void readFile() {
-        Mono<List<String>> listMono = Mono.fromCallable(() -> Files.readAllLines(Path.of("src/main/resources/file.txt")))
-                .log()
-                .subscribeOn(Schedulers.boundedElastic());
-
-        listMono.subscribe(l -> log.info("Line: {}", l.size()));
-        TimeUnit.SECONDS.sleep(5);
     }
 
     /**
@@ -1392,6 +1437,11 @@ public class ReactorDemoTest {
         return Mono.just(Optional.of("hello"));
     }
 
+    /**
+     * ********************************************************************
+     *  defer
+     * ********************************************************************
+     */
     @Test
     @SneakyThrows
     void deferTest() {
@@ -1420,24 +1470,68 @@ public class ReactorDemoTest {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  fromSupplier
+     * ********************************************************************
+     */
     @Test
     public void monoSupplier() {
         Supplier<String> stringSupplier = () -> getName();
-        Mono<String> mono = Mono.fromSupplier(stringSupplier);
+        Mono<String> mono = Mono.fromSupplier(stringSupplier)
+                .log();
         mono.subscribe(System.out::println);
     }
 
+    /**
+     * ********************************************************************
+     *  fromCallable - runs blocking function on different thread and returns value
+     * ********************************************************************
+     */
     @Test
     public void monoCallable() {
         Callable<String> stringCallable = () -> getName();
-        Mono<String> mono = Mono.fromCallable(stringCallable);
+        Mono<String> mono = Mono.fromCallable(stringCallable)
+                .log()
+                .subscribeOn(Schedulers.boundedElastic());
         mono.subscribe(System.out::println);
     }
 
+    /**
+     * ********************************************************************
+     *  fromCallable - read file may be blocking so we dont want to block main thread.
+     * ********************************************************************
+     */
+    @Test
+    @SneakyThrows
+    void readFile() {
+        Mono<List<String>> listMono = Mono.fromCallable(() -> Files.readAllLines(Path.of("src/test/resources/file.txt")))
+                .log()
+                .subscribeOn(Schedulers.boundedElastic());
+
+        listMono.subscribe(l -> log.info("Line: {}", l.size()));
+        TimeUnit.SECONDS.sleep(5);
+
+        StepVerifier.create(listMono)
+                .expectSubscription()
+                .thenConsumeWhile(l -> {
+                    Assertions.assertThat(l.isEmpty()).isFalse();
+                    return true;
+                })
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  fromRunnable - runs blocking function on different thread, but doesnt return value
+     * ********************************************************************
+     */
     @Test
     public void monoRunnable() {
         Runnable stringCallable = () -> getName();
-        Mono<Object> mono = Mono.fromRunnable(stringCallable);
+        Mono<Object> mono = Mono.fromRunnable(stringCallable)
+                .log()
+                .subscribeOn(Schedulers.boundedElastic());
         mono.subscribe(System.out::println);
     }
 
