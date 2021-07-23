@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,12 +35,34 @@ import org.junit.jupiter.api.Test;
 
 public class FunctionalDemo {
     static List<Customer> customerList = List.of(
-            Customer.builder().name("Peter").age(32).build(),
-            Customer.builder().name("Joe").age(28).build(),
-            Customer.builder().name("Marie").age(31).build(),
-            Customer.builder().name("Raj").age(33).build(),
-            Customer.builder().name("Simon").age(26).build()
+            Customer.builder().name("Peter").city("london").age(32).build(),
+            Customer.builder().name("Joe").city("paris").age(28).build(),
+            Customer.builder().name("Marie").city("rome").age(31).build(),
+            Customer.builder().name("Raj").city("delhi").age(33).build(),
+            Customer.builder().name("Simon").city("london").age(26).build()
     );
+
+    @Test
+    public void oldVsNewTest() {
+
+        // Now let's group all person by city in pre Java 8 world
+        Map<String, List<Customer>> personByCity = new HashMap<>();
+        for (Customer p : customerList) {
+            if (!personByCity.containsKey(p.getCity())) {
+                personByCity.put(p.getCity(), new ArrayList<>());
+            }
+            personByCity.get(p.getCity()).add(p);
+        }
+        System.out.println("Person grouped by cities : " + personByCity + "\n");
+
+        // Let's see how we can group objects in Java 8
+        personByCity = customerList.stream().collect(Collectors.groupingBy(Customer::getCity));
+        System.out.println("Person grouped by cities in Java 8: " + personByCity + "\n");
+
+        // Now let's group person by age
+        Map<Integer, List<Customer>> personByAge = customerList.stream().collect(Collectors.groupingBy(Customer::getAge));
+        System.out.println("Person grouped by age in Java 8: " + personByAge);
+    }
 
     @Test
     public void predicateTest() {
@@ -184,6 +208,42 @@ public class FunctionalDemo {
                 .map(String::toUpperCase)
                 .collect(toList())
                 .forEach(System.out::println);
+    }
+
+    @Test
+    void collectToMapTest() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("Niraj", 6);
+        map.put("Rahul", 43);
+        map.put("Ram", 44);
+        map.put("Sham", 33);
+        map.put("Pratik", 5);
+        map.put("Ashok", 5);
+
+        //Sort map by Value Ascending order
+        Map<String, Integer> sortedMapByValueAscending
+                =  map.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        //Sort map by Value Descending orde
+        Map<String, Integer> sortedMapByValueDescending
+                = map.entrySet().stream()
+                .sorted(Map.Entry.<String,Integer>comparingByValue().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
+
+        //Sort map by Key Ascending order
+        Map<String, Integer> sortedMapByKeyAscending
+                = map.entrySet()
+                .stream().sorted(Map.Entry.comparingByKey())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1,LinkedHashMap::new));
+
+        //Sort map by Key Descending order
+        Map<String, Integer> sortedMapByKeyDescending
+                = map.entrySet()
+                .stream().sorted(Map.Entry.<String,Integer>comparingByKey().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
+
     }
 
     @Test
@@ -488,6 +548,7 @@ public class FunctionalDemo {
 @Data
 class Customer {
     public String name;
+    public String city;
     public Integer age;
 }
 
