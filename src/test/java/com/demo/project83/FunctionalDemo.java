@@ -34,7 +34,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class FunctionalDemo {
-    static List<Customer> customerList = List.of(
+
+    List<Customer> customerList = List.of(
             Customer.builder().name("Peter").city("london").age(32).build(),
             Customer.builder().name("Joe").city("paris").age(28).build(),
             Customer.builder().name("Marie").city("rome").age(31).build(),
