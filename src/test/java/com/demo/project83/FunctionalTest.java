@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,7 +37,6 @@ import java.util.stream.Stream;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class FunctionalTest {
@@ -339,7 +337,7 @@ public class FunctionalTest {
         map.put("Ashok", 5);
 
         //Sort map by Value Ascending order
-        Map<String, Integer> sortedMapByValueAscending =  map.entrySet()
+        Map<String, Integer> sortedMapByValueAscending = map.entrySet()
                 .stream()
                 .sorted(Map.Entry.comparingByValue())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
@@ -349,8 +347,8 @@ public class FunctionalTest {
         //Sort map by Value Descending order
         Map<String, Integer> sortedMapByValueDescending = map.entrySet()
                 .stream()
-                .sorted(Map.Entry.<String,Integer>comparingByValue().reversed())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         System.out.println(sortedMapByValueDescending);
         System.out.println("---------------------------------------------------");
 
@@ -358,15 +356,15 @@ public class FunctionalTest {
         Map<String, Integer> sortedMapByKeyAscending
                 = map.entrySet()
                 .stream().sorted(Map.Entry.comparingByKey())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1,LinkedHashMap::new));
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         System.out.println(sortedMapByKeyAscending);
         System.out.println("---------------------------------------------------");
 
         //Sort map by Key Descending order
         Map<String, Integer> sortedMapByKeyDescending
                 = map.entrySet()
-                .stream().sorted(Map.Entry.<String,Integer>comparingByKey().reversed())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
+                .stream().sorted(Map.Entry.<String, Integer>comparingByKey().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
         System.out.println(sortedMapByKeyDescending);
         System.out.println("---------------------------------------------------");
     }
@@ -408,7 +406,7 @@ public class FunctionalTest {
         //Avoid using the below as it modifies the orignial list.
         //Collections.sort(customerList, (a, b) -> b.getName().compareTo(a.getName()));
 
-        List<String> expectedResult = List.of("Simon","Raj","Peter Parker","Peter","Marie","Joe");
+        List<String> expectedResult = List.of("Simon", "Raj", "Peter Parker", "Peter", "Marie", "Joe");
         assertEquals(expectedResult, sortResult);
         System.out.println("---------------------------------------------------");
 
@@ -592,8 +590,8 @@ public class FunctionalTest {
         //emp with max age and print name instead of emp.
         String result = customerList.stream()
                 .collect(collectingAndThen(
-                            maxBy(comparing(Customer::getAge)),
-                            e -> e.map(Customer::getName).orElse("")
+                        maxBy(comparing(Customer::getAge)),
+                        e -> e.map(Customer::getName).orElse("")
                         )
                 );
         System.out.println(result);
@@ -693,7 +691,7 @@ public class FunctionalTest {
     public void ifPresentTest() {
         String input = "key:a,key:b,key:c,key:d";
         Optional.ofNullable(input)
-                .ifPresent(in -> Arrays.stream(in.split( "," ))
+                .ifPresent(in -> Arrays.stream(in.split(","))
                         .map(String::toLowerCase)
                         .peek(System.out::println)
                         .filter(not(match -> (match.startsWith("key"))))
@@ -704,7 +702,7 @@ public class FunctionalTest {
         String input2 = "key:a,key:b,:c,key:d";
         assertThrows(RuntimeException.class, () -> {
             Optional.ofNullable(input2)
-                    .ifPresent(in -> Arrays.stream(in.split( "," ))
+                    .ifPresent(in -> Arrays.stream(in.split(","))
                             .map(String::toLowerCase)
                             .peek(System.out::println)
                             .filter(not(match -> (match.startsWith("key"))))
