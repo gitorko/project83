@@ -14,7 +14,7 @@ import reactor.test.StepVerifier;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
-public class ReactorWebClientDemo {
+public class ReactorWebClientTest {
 
     static String HOST = "https://jsonplaceholder.typicode.com";
 

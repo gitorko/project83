@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -37,7 +36,7 @@ import lombok.Data;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class FunctionalDemo {
+public class FunctionalTest {
 
     List<Customer> customerList = List.of(
             Customer.builder().name("Peter Parker").city("london").age(32).build(),
@@ -688,11 +687,11 @@ public class FunctionalDemo {
         System.out.println(func1.apply("Hello", "World1"));
 
         //static method
-        func1 = FunctionalDemo::concat1;
+        func1 = FunctionalTest::concat1;
         System.out.println(func1.apply("Hello", "World2"));
 
         //instance method.
-        func1 = new FunctionalDemo()::concat2;
+        func1 = new FunctionalTest()::concat2;
         System.out.println(func1.apply("Hello", "World3"));
 
         //passing function as param

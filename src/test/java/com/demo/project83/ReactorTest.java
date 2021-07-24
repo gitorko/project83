@@ -36,7 +36,7 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 @Slf4j
-public class ReactorDemoTest {
+public class ReactorTest {
 
     /**
      * ********************************************************************
@@ -208,7 +208,7 @@ public class ReactorDemoTest {
     @Test
     void flatMapTest1() {
 
-        Flux flux1 = Flux.just("Jack", "Jill").flatMap(ReactorDemoTest::capitalizeReactive);
+        Flux flux1 = Flux.just("Jack", "Jill").flatMap(ReactorTest::capitalizeReactive);
         flux1.subscribe(System.out::println);
         StepVerifier.create(flux1)
                 .expectSubscription()
@@ -217,7 +217,7 @@ public class ReactorDemoTest {
                 .verifyComplete();
 
         //Map is for simple objects
-        Flux flux2 = Flux.just("Jack", "Jill").map(ReactorDemoTest::capitalize);
+        Flux flux2 = Flux.just("Jack", "Jill").map(ReactorTest::capitalize);
         flux2.subscribe(System.out::println);
         StepVerifier.create(flux2)
                 .expectSubscription()
@@ -228,14 +228,14 @@ public class ReactorDemoTest {
         //Modification of object in chain - done via flatMap
         //Ideally create a new object instead of modifying the existing object.
         Mono<String> mono1 = Mono.just("Jack")
-                .flatMap(ReactorDemoTest::appendGreet);
+                .flatMap(ReactorTest::appendGreet);
         StepVerifier.create(mono1)
                 .expectNext("Hello Jack")
                 .verifyComplete();
 
         //Modification of object in chain - done via zipWith
         Mono<String> mono2 = Mono.just("Jack")
-                .zipWith(Mono.just("Hello "), ReactorDemoTest::getGreet);
+                .zipWith(Mono.just("Hello "), ReactorTest::getGreet);
         StepVerifier.create(mono2)
                 .expectNext("Hello Jack")
                 .verifyComplete();
@@ -311,7 +311,7 @@ public class ReactorDemoTest {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
-        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorDemoTest.checkList1(flux2, f));
+        Flux<String> commonFlux = flux1.filterWhen(f -> ReactorTest.checkList1(flux2, f));
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
                 .expectNext("apple", "orange")
@@ -354,7 +354,7 @@ public class ReactorDemoTest {
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
 
-        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorDemoTest.checkList2(flux2, f));
+        Flux<String> diffFlux = flux1.filterWhen(f -> ReactorTest.checkList2(flux2, f));
         diffFlux.subscribe(System.out::println);
         StepVerifier.create(diffFlux)
                 .expectNext("banana")
@@ -637,7 +637,7 @@ public class ReactorDemoTest {
     void errorPropagateTest() {
         Flux flux = Flux.just("Jack", "Jill").map(u -> {
             try {
-                return ReactorDemoTest.checkName(u);
+                return ReactorTest.checkName(u);
             } catch (CustomException e) {
                 throw Exceptions.propagate(e);
             }
@@ -805,8 +805,8 @@ public class ReactorDemoTest {
     void thenManyChainTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemoTest.deleteFromDb())
-                .thenMany(ReactorDemoTest.saveToDb())
+                .thenMany(ReactorTest.deleteFromDb())
+                .thenMany(ReactorTest.saveToDb())
                 .subscribe(System.out::println);
     }
 
@@ -826,8 +826,8 @@ public class ReactorDemoTest {
     void thenEmptyTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemoTest.saveToDb())
-                .thenEmpty(ReactorDemoTest.sendMail())
+                .thenMany(ReactorTest.saveToDb())
+                .thenEmpty(ReactorTest.sendMail())
                 .subscribe(System.out::println);
     }
 
@@ -835,7 +835,7 @@ public class ReactorDemoTest {
     void thenTest() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
-                .thenMany(ReactorDemoTest.saveToDb())
+                .thenMany(ReactorTest.saveToDb())
                 .then()
                 .then(Mono.just("Ram"))
                 .thenReturn("Done!")
