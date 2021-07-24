@@ -1,11 +1,16 @@
 package com.demo.project83;
 
+import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.filtering;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.maxBy;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -69,13 +74,13 @@ public class FunctionalTest {
 
         // Group objects in Java 8
         Map<String, List<Customer>> personByCity2 = customerList.stream()
-                .collect(Collectors.groupingBy(Customer::getCity));
+                .collect(groupingBy(Customer::getCity));
         System.out.println("Person grouped by cities in Java 8: " + personByCity2);
         assertEquals(2, personByCity2.get("rome").size());
         System.out.println("---------------------------------------------------");
 
         // Now let's group person by age
-        Map<Integer, List<Customer>> personByAge = customerList.stream().collect(Collectors.groupingBy(Customer::getAge));
+        Map<Integer, List<Customer>> personByAge = customerList.stream().collect(groupingBy(Customer::getAge));
         System.out.println("Person grouped by age in Java 8: " + personByAge);
         assertEquals(1, personByAge.get(32).size());
         System.out.println("---------------------------------------------------");
@@ -489,7 +494,7 @@ public class FunctionalTest {
         //Sort customer by name and then by age.
         customerList.stream()
                 .sorted(
-                        Comparator.comparing(Customer::getName)
+                        comparing(Customer::getName)
                                 .thenComparing(Customer::getAge)
                 )
                 .forEach(System.out::println);
@@ -522,97 +527,116 @@ public class FunctionalTest {
 
     /**
      * ********************************************************************
-     *  collect - groupBy
+     *  collect - groupBy, mapping, filtering, counting
      * ********************************************************************
      */
     @Test
-    public void groupByFilterTest() {
+    public void groupByTest() {
 
         //group by name and get list of customers with same name.
-        customerList.stream()
-                .collect(groupingBy(Customer::getName))
-                .forEach((k, v) -> System.out.println(k + ":" + v));
+        Map<String, List<Customer>> result1 = customerList.stream()
+                .collect(groupingBy(Customer::getName));
+        System.out.println(result1);
+        System.out.println("---------------------------------------------------");
 
         //group by name and get list of ages if customer with same name.
-        customerList.stream()
-                .collect(groupingBy(Customer::getName, mapping(Customer::getAge, toList())))
-                .forEach((k, v) -> System.out.println(k + ":" + v));
+        Map<String, List<Integer>> result2 = customerList.stream()
+                .collect(
+                        groupingBy(Customer::getName,
+                                mapping(Customer::getAge, toList())));
+        System.out.println(result2);
+        System.out.println("---------------------------------------------------");
 
         //Group by age, employees who name is greater than 4 chars.
-        Map<Integer, List<String>> result = customerList.stream()
+        Map<Integer, List<String>> result3 = customerList.stream()
                 .collect(
-                        Collectors.groupingBy(Customer::getAge,
-                                Collectors.mapping(
+                        groupingBy(Customer::getAge,
+                                mapping(
                                         Customer::getName,
-                                        Collectors.filtering(name -> name.length() > 4, toList())
+                                        filtering(name -> name.length() > 4, toList())
                                 ))
                 );
-        System.out.println(result);
-    }
+        System.out.println(result3);
+        System.out.println("---------------------------------------------------");
 
-    @Test
-    public void groupByTest() {
-        //group by age all customers.
-        Map<Integer, List<String>> result = customerList.stream()
+        //group by age all customers name
+        Map<Integer, List<String>> result4 = customerList.stream()
                 .collect(
-                        Collectors.groupingBy(Customer::getAge,
-                                Collectors.mapping(Customer::getName, toList()))
+                        groupingBy(Customer::getAge,
+                                mapping(Customer::getName, toList()))
                 );
-        System.out.println(result);
+        System.out.println(result4);
+        System.out.println("---------------------------------------------------");
 
         //count emp with same name.
-        Map<String, Long> result2 = customerList.stream()
-                .collect(Collectors.groupingBy(Customer::getName, Collectors.counting()));
-        System.out.println(result2);
+        Map<String, Long> result5 = customerList.stream()
+                .collect(groupingBy(Customer::getName, Collectors.counting()));
+        System.out.println(result5);
+        System.out.println("---------------------------------------------------");
 
-        //Group all same name but put age to list.
-        Map<String, List<Integer>> result3 = customerList.stream()
-                .collect(Collectors
-                        .groupingBy(Customer::getName, Collectors.mapping(Customer::getAge, toList())));
-        System.out.println(result3);
-
-        //group all by same name
-        Map<String, List<Customer>> result4 = customerList.stream()
-                .collect(Collectors.groupingBy(p -> p.getName()));
-        System.out.println(result4);
     }
 
+    /**
+     * ********************************************************************
+     *  maxBy - comparing, collectingAndThen
+     * ********************************************************************
+     */
     @Test
     public void maxByTest() {
+        //emp with max age
+        Optional<Customer> maxEmp = customerList.stream()
+                .collect(maxBy(comparing(Customer::getAge)));
+        System.out.println(maxEmp.get());
+        System.out.println("---------------------------------------------------");
+
         //emp with max age and print name instead of emp.
         String result = customerList.stream()
-                .collect(Collectors.collectingAndThen(
-                        Collectors.maxBy(Comparator.comparing(Customer::getAge)),
-                        e -> e.map(Customer::getName).orElse("")
+                .collect(collectingAndThen(
+                            maxBy(comparing(Customer::getAge)),
+                            e -> e.map(Customer::getName).orElse("")
                         )
                 );
         System.out.println(result);
+        System.out.println("---------------------------------------------------");
 
-        //emp with max age
-        Optional<Customer> maxEmp = customerList.stream()
-                .collect(Collectors.maxBy(Comparator.comparing(Customer::getAge)));
-        System.out.println(maxEmp.get());
     }
 
+    /**
+     * ********************************************************************
+     *  collectingAndThen
+     * ********************************************************************
+     */
     @Test
     public void collectingAndThenTest() {
         //convert long to int.
         Map<String, Integer> result = customerList.stream()
-                .collect(Collectors.groupingBy(Customer::getName,
-                        Collectors.collectingAndThen(Collectors.counting(),
+                .collect(groupingBy(Customer::getName,
+                        collectingAndThen(Collectors.counting(),
                                 Long::intValue
                         )));
         System.out.println(result);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  partitioningBy - same as groupBy but always partitions into 2 parts
+     * ********************************************************************
+     */
     @Test
     public void partitioningByTest() {
         //2 list of even odd employees
         Map<Boolean, List<Customer>> result = customerList.stream()
                 .collect(Collectors.partitioningBy(p -> p.getAge() % 2 == 0));
         System.out.println(result);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  reduce
+     * ********************************************************************
+     */
     @Test
     public void reduceTest() {
         List<Integer> numLst = Arrays.asList(1, 2, 3, 4, 5, 6);
@@ -620,23 +644,30 @@ public class FunctionalTest {
         //Sum of integer array. (both are param)
         Integer reduce = numLst.stream().reduce(0, (total, val) -> Integer.sum(total, val));
         System.out.println("reduce = " + reduce);
+        System.out.println("---------------------------------------------------");
 
         reduce = numLst.stream().reduce(0, Integer::sum);
         System.out.println("reduce = " + reduce);
+        System.out.println("---------------------------------------------------");
 
         //Concat of string. (one is target, one is param)
         String concat = numLst.stream().map(String::valueOf).reduce("", (carry, str) -> carry.concat(str));
         System.out.println("concat = " + concat);
+        System.out.println("---------------------------------------------------");
 
         concat = numLst.stream().map(String::valueOf).reduce("", String::concat);
         System.out.println("concat = " + concat);
+        System.out.println("---------------------------------------------------");
 
         Integer sum = numLst.stream().filter(e -> e % 2 == 0).map(e -> e * 2).reduce(0, Integer::sum);
         System.out.println("sum = " + sum);
+        System.out.println("---------------------------------------------------");
 
         Integer sum2 = numLst.stream().filter(e -> e % 2 == 0).mapToInt(e -> e * 2).sum();
         System.out.println("sum2 = " + sum2);
+        System.out.println("---------------------------------------------------");
 
+        //Use reduce to collect to a list. Given only to explain, use toList in real world.
         customerList.stream()
                 .filter(e -> e.getAge() > 30)
                 .map(e -> e.getName())
@@ -650,8 +681,14 @@ public class FunctionalTest {
                             return names1;
                         }
                 ).forEach(System.out::println);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  ifPresent - findAny
+     * ********************************************************************
+     */
     @Test
     public void ifPresentTest() {
         String input = "key:a,key:b,key:c,key:d";
@@ -662,9 +699,10 @@ public class FunctionalTest {
                         .filter(not(match -> (match.startsWith("key"))))
                         .findAny()
                         .ifPresent(match -> new RuntimeException("Pattern not valid!")));
-        System.out.println();
+        System.out.println("---------------------------------------------------");
+
         String input2 = "key:a,key:b,:c,key:d";
-        Assertions.assertThrows(RuntimeException.class, () -> {
+        assertThrows(RuntimeException.class, () -> {
             Optional.ofNullable(input2)
                     .ifPresent(in -> Arrays.stream(in.split( "," ))
                             .map(String::toLowerCase)
@@ -676,64 +714,7 @@ public class FunctionalTest {
                                 throw new RuntimeException("Pattern not valid!");
                             }));
         });
-    }
-
-    @Test
-    public void higherOrderFunctionTest() {
-        //inline lambda
-        BiFunction<String, String, String> func1 = (s, t) -> {
-            return s + t;
-        };
-        System.out.println(func1.apply("Hello", "World1"));
-
-        //static method
-        func1 = FunctionalTest::concat1;
-        System.out.println(func1.apply("Hello", "World2"));
-
-        //instance method.
-        func1 = new FunctionalTest()::concat2;
-        System.out.println(func1.apply("Hello", "World3"));
-
-        //passing function as param
-        System.out.println(
-                concatAndTransform("Hello", "World4", (s) -> {
-                    return s.toUpperCase();
-                }));
-
-        //Higher order function
-        Supplier<String> formOps = concatAndTransformReturnFunction("Hello", "World5", (s) -> {
-            return s.toUpperCase();
-        });
-        System.out.println(formOps.get());
-    }
-
-    private static String concat1(String a, String b) {
-        return a + b;
-    }
-
-    private String concat2(String a, String b) {
-        return a + b;
-    }
-
-    private static String concatAndTransform(String a, String b, Function<String, String> stringTransform) {
-        if (stringTransform != null) {
-            a = stringTransform.apply(a);
-            b = stringTransform.apply(b);
-        }
-        return a + b;
-    }
-
-    private static Supplier<String> concatAndTransformReturnFunction(String a, String b, Function<String, String> stringTransform) {
-        return () -> {
-            String aa = a;
-            String bb = b;
-            //Because you can modify things in lambda.
-            if (stringTransform != null) {
-                aa = stringTransform.apply(aa);
-                bb = stringTransform.apply(bb);
-            }
-            return aa + bb;
-        };
+        System.out.println("---------------------------------------------------");
     }
 
 }
