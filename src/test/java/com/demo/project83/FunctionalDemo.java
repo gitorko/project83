@@ -1,7 +1,10 @@
 package com.demo.project83;
 
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -36,183 +40,292 @@ import org.junit.jupiter.api.Test;
 public class FunctionalDemo {
 
     List<Customer> customerList = List.of(
-            Customer.builder().name("Peter").city("london").age(32).build(),
+            Customer.builder().name("Peter Parker").city("london").age(32).build(),
             Customer.builder().name("Joe").city("paris").age(28).build(),
             Customer.builder().name("Marie").city("rome").age(31).build(),
+            Customer.builder().name("Peter").city("rome").age(30).build(),
             Customer.builder().name("Raj").city("delhi").age(33).build(),
             Customer.builder().name("Simon").city("london").age(26).build()
     );
 
+    /**
+     * ********************************************************************
+     *  Difference between imperative vs functional style
+     * ********************************************************************
+     */
     @Test
-    public void oldVsNewTest() {
+    public void imperativeVsFunctional() {
 
-        // Now let's group all person by city in pre Java 8 world
-        Map<String, List<Customer>> personByCity = new HashMap<>();
+        // Group all person by city in pre Java 8 world
+        Map<String, List<Customer>> personByCity1 = new HashMap<>();
         for (Customer p : customerList) {
-            if (!personByCity.containsKey(p.getCity())) {
-                personByCity.put(p.getCity(), new ArrayList<>());
+            if (!personByCity1.containsKey(p.getCity())) {
+                personByCity1.put(p.getCity(), new ArrayList<>());
             }
-            personByCity.get(p.getCity()).add(p);
+            personByCity1.get(p.getCity()).add(p);
         }
-        System.out.println("Person grouped by cities : " + personByCity + "\n");
+        System.out.println("Person grouped by cities : " + personByCity1);
+        assertEquals(2, personByCity1.get("rome").size());
+        System.out.println("---------------------------------------------------");
 
-        // Let's see how we can group objects in Java 8
-        personByCity = customerList.stream().collect(Collectors.groupingBy(Customer::getCity));
-        System.out.println("Person grouped by cities in Java 8: " + personByCity + "\n");
+        // Group objects in Java 8
+        Map<String, List<Customer>> personByCity2 = customerList.stream()
+                .collect(Collectors.groupingBy(Customer::getCity));
+        System.out.println("Person grouped by cities in Java 8: " + personByCity2);
+        assertEquals(2, personByCity2.get("rome").size());
+        System.out.println("---------------------------------------------------");
 
         // Now let's group person by age
         Map<Integer, List<Customer>> personByAge = customerList.stream().collect(Collectors.groupingBy(Customer::getAge));
         System.out.println("Person grouped by age in Java 8: " + personByAge);
+        assertEquals(1, personByAge.get(32).size());
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  Predicate <T> - takes T returns boolean
+     * ********************************************************************
+     */
     @Test
     public void predicateTest() {
         Predicate<String> strlen = (s) -> s.length() < 10;
         assertEquals(strlen.test("Apples"), true);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  Runnable - takes nothing returns nothing
+     * ********************************************************************
+     */
+    @Test
+    public void runnableTest() {
+        Runnable emptyConsumer = () -> System.out.println("run 1");
+        emptyConsumer.run();
+        System.out.println("---------------------------------------------------");
+    }
+
+    /**
+     * ********************************************************************
+     *  Consumer <T> - takes T returns nothing
+     * ********************************************************************
+     */
     @Test
     public void consumerTest() {
-        Consumer<String> consumerStr = (s) -> System.out.println(s.toLowerCase());
-        consumerStr.accept("ABCDefghijklmnopQRSTuvWxyZ");
-
-        Runnable r1 = () -> System.out.println("run 1");
-        r1.run();
+        Consumer<String> consumerStr = (s) -> System.out.println(s.toUpperCase());
+        consumerStr.accept("peter parker");
+        System.out.println("---------------------------------------------------");
 
         Consumer<String> hello = name -> System.out.println("Hello, " + name);
-        for (String name : Arrays.asList("Duke", "Mickey", "Minnie")) {
-            hello.accept(name);
-        }
+        customerList.forEach(c -> hello.accept(c.getName()));
+        System.out.println("---------------------------------------------------");
 
         //example of a lambda made from an instance method
         Consumer<String> print = System.out::println;
-        print.accept("Coming to you directly from a lambda...");
+        print.accept("Sent directly from a lambda...");
+        System.out.println("---------------------------------------------------");
 
-        List<Integer> numLst = Arrays.asList(1, 2, 3, 4, 5, 6);
-        numLst.forEach(new Consumer<Integer>() {
+        //As anonymous class, dont use this, provided for explanation only.
+        customerList.forEach(new Consumer<Customer>() {
             @Override
-            public void accept(Integer t) {
-                System.out.println("t = " + t);
+            public void accept(Customer customer) {
+                System.out.println("Hello " + customer.getName());
             }
         });
+        System.out.println("---------------------------------------------------");
+
     }
 
+    /**
+     * ********************************************************************
+     *  Function <T,R> - takes T returns R
+     * ********************************************************************
+     */
     @Test
     public void functionTest() {
         //Function example
-        Function<Integer, String> converter = (num) -> Integer.toString(num);
-        System.out.println("length of 26: " + converter.apply(26).length());
+        Function<Integer, String> convertNumToString = (num) -> Integer.toString(num);
+        System.out.println("String value is : " + convertNumToString.apply(26));
+        System.out.println("---------------------------------------------------");
 
         //lambdas made using a constructor
         Function<String, BigInteger> newBigInt = BigInteger::new;
-        System.out.println("expected value: 123456789, actual value: " +
-                newBigInt.apply("123456789"));
+        System.out.println("Number " + newBigInt.apply("123456789"));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  Supplier <T> - takes nothing returns T
+     * ********************************************************************
+     */
     @Test
     public void supplierTest() {
-        //Supplier example
-        Supplier<String> s = () -> "Java is fun";
+        Supplier<String> s = () -> "Message from supplier";
         System.out.println(s.get());
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  BinaryOperator <T> - takes T,T returns T
+     * ********************************************************************
+     */
     @Test
     public void binaryOperatorTest() {
-        //Binary Operator example
         BinaryOperator<Integer> add = (a, b) -> a + b;
         System.out.println("add 10 + 25: " + add.apply(10, 25));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  UnaryOperator <T> - takes T returns T
+     * ********************************************************************
+     */
     @Test
     public void unaryOperatorTest() {
-        //Unary Operator example
         UnaryOperator<String> str = (msg) -> msg.toUpperCase();
-        System.out.println(str.apply("This is my message in upper case"));
+        System.out.println(str.apply("hello, Joe"));
+        System.out.println("---------------------------------------------------");
 
-        //these two are the same using the static method concat
+        //same example but using the static method concat
         UnaryOperator<String> greeting = x -> "Hello, ".concat(x);
-        System.out.println(greeting.apply("World"));
+        System.out.println(greeting.apply("Raj"));
+        System.out.println("---------------------------------------------------");
 
         UnaryOperator<String> makeGreeting = "Hello, "::concat;
         System.out.println(makeGreeting.apply("Peggy"));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  BiFunction <T,R,S> - takes T,R returns S
+     * ********************************************************************
+     */
     @Test
     public void biFunctionTest() {
-        BiFunction<String, String, String> concat = (a, b) -> a + b;
-        String sentence = concat.apply("Today is ", "a great day");
-        System.out.println(sentence);
+        BiFunction<Integer, Boolean, String> concat = (a, b) -> a.toString() + b.toString();
+        System.out.println(concat.apply(23, true));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  Custom Functional Interface
+     * ********************************************************************
+     */
     @Test
     public void functionalInterfaceTest() {
         GreetingFunction greeting = message ->
                 System.out.println("Java Programming " + message);
-        greeting.sayMessage("Rocks with lambda expressions");
+        greeting.sayMessage("is awesome");
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  IntFunction<T> - takes integer returns T
+     * ********************************************************************
+     */
     @Test
     public void intFunctionTest() {
         IntFunction<String> intToString = num -> Integer.toString(num);
-        System.out.println("expected value 3, actual value: " +
-                intToString.apply(123).length());
+        System.out.println("String value of number: " + intToString.apply(123));
+        System.out.println("---------------------------------------------------");
 
-        //static method reference using ::
+        //static method reference
         IntFunction<String> intToString2 = Integer::toString;
-        System.out.println("expected value 4, actual value:  " +
-                intToString2.apply(4567).length());
+        System.out.println("String value of number: " + intToString2.apply(4567));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  Higher order function - pass functions as arguments
+     * ********************************************************************
+     */
+    @Test
+    public void higherOrderTest() {
+        //Function takes Integer,Predicate and returns Predicate
+        //Function<T,R>
+        Function<Integer, Predicate<String>> checkLength = (minLen) -> {
+            //predicate returned
+            return (str) -> str.length() > minLen;
+        };
+        List<String> collect = customerList.stream()
+                .map(Customer::getName)
+                .filter(checkLength.apply(4))
+                .collect(toList());
+        collect.forEach(System.out::println);
+        assertEquals(4, collect.size());
+        System.out.println("---------------------------------------------------");
+    }
+
+    /**
+     * ********************************************************************
+     *  collect - toList, joining, toCollection
+     * ********************************************************************
+     */
     @Test
     public void collectTest() {
         //Collect customers who are below 30.
         List<Customer> result = customerList.stream()
                 .filter(e -> e.getAge() < 30)
                 .collect(toList());
-        assertEquals(result.size(), 2);
+        assertEquals(2, result.size());
+        System.out.println("---------------------------------------------------");
 
         //get all employee names in List<String>
+        //Using toCollection you can specify the type
         ArrayList<String> result2 = customerList.stream()
                 .map(e -> e.getName())
                 .collect(Collectors.toCollection(ArrayList::new));
-        assertEquals(result2.size(), 5);
+        assertEquals(6, result2.size());
+        System.out.println("---------------------------------------------------");
 
-        //one to one
-        List<Integer> nums = List.of(1, 2, 3);
-        List<Integer> result3 = nums.stream()
-                .map(e -> e * 2)
-                .collect(toList());
-        System.out.println(result3);
+        //Collect and join to single string separated by coma.
+        String customerString = customerList.stream()
+                .filter(e -> e.getAge() > 30)
+                .map(e -> e.getName())
+                .collect(Collectors.joining(", "));
+        System.out.println(customerString);
+        assertEquals("Peter Parker, Marie, Raj", customerString);
+        System.out.println("---------------------------------------------------");
 
-        //name and age to map.
+    }
+
+    /**
+     * ********************************************************************
+     *  collect - toMap
+     * ********************************************************************
+     */
+    @Test
+    void collectToMapTest() {
+
+        //Collect a map with name as key and age as value.
         customerList.stream()
                 .filter(e -> e.getAge() > 30)
                 .collect(Collectors.toMap(Customer::getName, Customer::getAge))
                 .forEach((k, v) -> System.out.println(k + ":" + v));
+        System.out.println("---------------------------------------------------");
 
-        //to list.
+        //Collect a map by name + city as key customer as value
         customerList.stream()
-                .filter(e -> e.getAge() > 30)
-                .collect(toList())
-                .forEach(System.out::println);
-
-        String result4 = customerList.stream()
-                .filter(e -> e.getAge() > 30)
-                .map(e -> e.getName())
-                .map(e -> e.toUpperCase())
-                .collect(Collectors.joining(", "));
-        System.out.println(result4);
-
-        customerList.stream()
-                .filter(e -> e.getAge() > 30)
-                .map(e -> e.getName())
-                .map(String::toUpperCase)
-                .collect(toList())
-                .forEach(System.out::println);
+                .collect(Collectors.toMap(c -> c.getName() + "-" + c.getCity(), c -> c))
+                .forEach((k, v) -> System.out.println(k + ":" + v));
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  collect - sort a Map by key or value
+     * ********************************************************************
+     */
     @Test
-    void collectToMapTest() {
+    public void sortMapTest() {
         Map<String, Integer> map = new HashMap<>();
         map.put("Niraj", 6);
         map.put("Rahul", 43);
@@ -222,98 +335,156 @@ public class FunctionalDemo {
         map.put("Ashok", 5);
 
         //Sort map by Value Ascending order
-        Map<String, Integer> sortedMapByValueAscending
-                =  map.entrySet().stream()
+        Map<String, Integer> sortedMapByValueAscending =  map.entrySet()
+                .stream()
                 .sorted(Map.Entry.comparingByValue())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+        System.out.println(sortedMapByValueAscending);
+        System.out.println("---------------------------------------------------");
 
-        //Sort map by Value Descending orde
-        Map<String, Integer> sortedMapByValueDescending
-                = map.entrySet().stream()
+        //Sort map by Value Descending order
+        Map<String, Integer> sortedMapByValueDescending = map.entrySet()
+                .stream()
                 .sorted(Map.Entry.<String,Integer>comparingByValue().reversed())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
+        System.out.println(sortedMapByValueDescending);
+        System.out.println("---------------------------------------------------");
 
         //Sort map by Key Ascending order
         Map<String, Integer> sortedMapByKeyAscending
                 = map.entrySet()
                 .stream().sorted(Map.Entry.comparingByKey())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1,LinkedHashMap::new));
+        System.out.println(sortedMapByKeyAscending);
+        System.out.println("---------------------------------------------------");
 
         //Sort map by Key Descending order
         Map<String, Integer> sortedMapByKeyDescending
                 = map.entrySet()
                 .stream().sorted(Map.Entry.<String,Integer>comparingByKey().reversed())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1 ,LinkedHashMap::new));
-
+        System.out.println(sortedMapByKeyDescending);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  collect - summingInt, sum
+     * ********************************************************************
+     */
     @Test
     public void collectSumTest() {
         //Sum all ages.
-        int total = customerList.stream().collect(Collectors.summingInt(Customer::getAge));
-        assertEquals(total, 150);
+        int total = customerList.stream()
+                .collect(Collectors.summingInt(Customer::getAge));
+        assertEquals(total, 180);
+        System.out.println("---------------------------------------------------");
+
+        int total2 = customerList.stream()
+                .mapToInt(Customer::getAge)
+                .sum();
+        assertEquals(total2, 180);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  sorted
+     * ********************************************************************
+     */
     @Test
-    public void sortTest() {
-        List<String> names = Arrays.asList("Paul", "Jane", "Michaela", "Sam");
-        Collections.sort(names, (a, b) -> b.compareTo(a));
-        names.forEach(System.out::println);
+    public void sortedTest() {
+
+        List<String> sortResult = customerList.stream()
+                .map(c -> c.getName())
+                .sorted((a, b) -> b.compareTo(a))
+                .collect(toList());
+        sortResult.forEach(System.out::println);
+
+        //Avoid using the below as it modifies the orignial list.
+        //Collections.sort(customerList, (a, b) -> b.getName().compareTo(a.getName()));
+
+        List<String> expectedResult = List.of("Simon","Raj","Peter Parker","Peter","Marie","Joe");
+        assertEquals(expectedResult, sortResult);
+        System.out.println("---------------------------------------------------");
+
     }
 
+    /**
+     * ********************************************************************
+     *  filter
+     * ********************************************************************
+     */
     @Test
     public void filterTest() {
-        Arrays.asList("red", "green", "blue")
-                .stream()
-                .sorted()
-                .findFirst()
-                .ifPresent(System.out::println);
-
-        //example of Stream.of with a filter
-        Stream.of("apple", "pear", "banana", "cherry", "apricot")
-                .filter(fruit -> {
-                    //  System.out.println("filter: " + fruit);
-                    return fruit.startsWith("a"); //predicate
+        customerList.stream()
+                .filter(customer -> {
+                    return customer.getName().startsWith("P"); //predicate
                 })
-                //if the foreach is removed, nothing will print,
-                //the foreach makes it a terminal event
-                .forEach(fruit -> System.out.println("Starts with A: " + fruit));
-
-        //using a stream and map operation to create a list of words in caps
-        List<String> collected = Stream.of("Java", " Rocks")
-                .map(string -> string.toUpperCase())
-                .collect(toList());
-        System.out.println(collected.toString());
+                .forEach(System.out::println);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  findFirst, ifPresent
+     * ********************************************************************
+     */
+    @Test
+    public void findFirstTest() {
+        customerList
+                .stream()
+                .filter(customer -> customer.getName().startsWith("P"))
+                .findFirst()
+                .ifPresent(System.out::println);
+        System.out.println("---------------------------------------------------");
+    }
+
+    /**
+     * ********************************************************************
+     *  mapToInt, max, average, IntStream
+     * ********************************************************************
+     */
     @Test
     public void mapToIntTest() {
+        int sum = customerList.stream()
+                .mapToInt(Customer::getAge)
+                .sum();
+        System.out.println(sum);
+        System.out.println("---------------------------------------------------");
+
         //primitive streams
         IntStream.range(1, 4)
                 .forEach(System.out::println);
+        System.out.println("---------------------------------------------------");
 
         //find the average of the numbers squared
         Arrays.stream(new int[]{1, 2, 3, 4})
                 .map(n -> n * n)
                 .average()
                 .ifPresent(System.out::println);
+        System.out.println("---------------------------------------------------");
 
         //map doubles to ints
         Stream.of(1.5, 2.3, 3.7)
                 .mapToInt(Double::intValue)
                 .forEach(System.out::println);
+        System.out.println("---------------------------------------------------");
 
+        //max of age
         OptionalInt max = customerList.stream()
                 .mapToInt(Customer::getAge)
                 .max();
         System.out.println(max.getAsInt());
+        System.out.println("---------------------------------------------------");
 
-        int sum = customerList.stream()
-                .mapToInt(Customer::getAge)
-                .sum();
-        System.out.println(sum);
     }
 
+    /**
+     * ********************************************************************
+     *  thenComparing - double sort, sort on name, then sort on age
+     * ********************************************************************
+     */
     @Test
     public void doubleSortTest() {
         //Sort customer by name and then by age.
@@ -323,16 +494,23 @@ public class FunctionalDemo {
                                 .thenComparing(Customer::getAge)
                 )
                 .forEach(System.out::println);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  flatMap
+     * ********************************************************************
+     */
     @Test
     public void flatMapTest() {
         //Get chars of all customer names.
-        List<String> collect = customerList.stream()
+        Set<String> collect = customerList.stream()
                 .map(Customer::getName)
                 .flatMap(name -> Stream.of(name.split("")))
-                .collect(toList());
+                .collect(toSet());
         System.out.println(collect);
+        System.out.println("---------------------------------------------------");
 
         //one to many
         List<Integer> nums = List.of(1, 2, 3);
@@ -340,10 +518,27 @@ public class FunctionalDemo {
                 .flatMap(e -> List.of(e, e + 1).stream())
                 .collect(toList());
         System.out.println(collect2);
+        System.out.println("---------------------------------------------------");
     }
 
+    /**
+     * ********************************************************************
+     *  collect - groupBy
+     * ********************************************************************
+     */
     @Test
     public void groupByFilterTest() {
+
+        //group by name and get list of customers with same name.
+        customerList.stream()
+                .collect(groupingBy(Customer::getName))
+                .forEach((k, v) -> System.out.println(k + ":" + v));
+
+        //group by name and get list of ages if customer with same name.
+        customerList.stream()
+                .collect(groupingBy(Customer::getName, mapping(Customer::getAge, toList())))
+                .forEach((k, v) -> System.out.println(k + ":" + v));
+
         //Group by age, employees who name is greater than 4 chars.
         Map<Integer, List<String>> result = customerList.stream()
                 .collect(
