@@ -847,6 +847,7 @@ public class ReactorTest {
      *  transform - accepts a Function functional interface.
      *  input is flux/mono
      *  output is flux/mono
+     *  takes a flux/mono and returns a flux/mono
      * ********************************************************************
      */
     @Test
@@ -1481,7 +1482,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    public void monoSupplier() {
+    public void monoSupplierTest() {
         Supplier<String> stringSupplier = () -> getName();
         Mono<String> mono = Mono.fromSupplier(stringSupplier)
                 .log();
@@ -1494,7 +1495,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    public void monoCallable() {
+    public void monoCallableTest() {
         Callable<String> stringCallable = () -> getName();
         Mono<String> mono = Mono.fromCallable(stringCallable)
                 .log()
@@ -1509,7 +1510,7 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void readFile() {
+    void readFileTest() {
         Mono<List<String>> listMono = Mono.fromCallable(() -> Files.readAllLines(Path.of("src/test/resources/file.txt")))
                 .log()
                 .subscribeOn(Schedulers.boundedElastic());
@@ -1532,7 +1533,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    public void monoRunnable() {
+    public void monoRunnableTest() {
         Runnable stringCallable = () -> getName();
         Mono<Object> mono = Mono.fromRunnable(stringCallable)
                 .log()
@@ -1540,21 +1541,76 @@ public class ReactorTest {
         mono.subscribe(System.out::println);
     }
 
+    private String getName() {
+        return "John";
+    }
+
     @Test
-    public void monoSubscribeOn() {
+    @SneakyThrows
+    public void monoDelayTest() {
+        Mono.just("john").delayElement(Duration.ofSeconds(3))
+                .subscribe(System.out::println);
+        TimeUnit.SECONDS.sleep(4);
+    }
+    /**
+     * ********************************************************************
+     *  onSchedulersHook - if you have to use thread local
+     * ********************************************************************
+     */
+    @Test
+    public void schedulerHookTest() {
+        Runnable stringCallable = () -> getName();
+        Schedulers.onScheduleHook("myHook", runnable -> {
+            log.info("before scheduled runnable");
+            return () -> {
+                log.info("before execution");
+                runnable.run();
+                log.info("after execution");
+            };
+        });
+        Mono.just("Hello world")
+                .subscribeOn(Schedulers.single())
+                .subscribe(System.out::println);
+    }
+
+    /**
+     * ********************************************************************
+     *  subscribeOn
+     * ********************************************************************
+     */
+    @Test
+    public void monoSubscribeOnTest() {
         String name = getMonoName().subscribeOn(Schedulers.boundedElastic())
                 .block();
         System.out.println(name);
     }
 
-    private String getName() {
-        return "John";
-    }
-
+    /**
+     * ********************************************************************
+     *  fromSupplier
+     * ********************************************************************
+     */
     private Mono<String> getMonoName() {
         return Mono.fromSupplier(() -> {
             return "John";
         }).map(String::toUpperCase);
+    }
+
+    /**
+     * ********************************************************************
+     *  checkpoint
+     * ********************************************************************
+     */
+    @Test
+    void checkpointTest() {
+        Flux flux = Flux.just("Jack", "Jill", "Joe")
+                .checkpoint("before uppercase")
+                .map(e -> e.toUpperCase())
+                .checkpoint("after uppercase")
+                .filter(e -> e.length() > 3)
+                .checkpoint("after filter")
+                .map(e -> new RuntimeException("Custom error!"));
+        flux.subscribe(System.out::println);
     }
 
 }
