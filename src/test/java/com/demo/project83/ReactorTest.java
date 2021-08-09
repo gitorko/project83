@@ -1,5 +1,7 @@
 package com.demo.project83;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -7,6 +9,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -777,7 +780,7 @@ public class ReactorTest {
         Flux flux = Flux.fromIterable(Arrays.asList("Jack", "Jill"));
         StepVerifier.create(flux)
                 .expectNextMatches(user -> user.equals("Jack"))
-                .assertNext(user -> Assertions.assertThat(user).isEqualTo("Jill"))
+                .assertNext(user -> assertThat(user).isEqualTo("Jill"))
                 .verifyComplete();
 
         //Wait for 2 elements.
@@ -1521,7 +1524,7 @@ public class ReactorTest {
         StepVerifier.create(listMono)
                 .expectSubscription()
                 .thenConsumeWhile(l -> {
-                    Assertions.assertThat(l.isEmpty()).isFalse();
+                    assertThat(l.isEmpty()).isFalse();
                     return true;
                 })
                 .verifyComplete();
@@ -1611,6 +1614,27 @@ public class ReactorTest {
                 .checkpoint("after filter")
                 .map(e -> new RuntimeException("Custom error!"));
         flux.subscribe(System.out::println);
+    }
+
+    /**
+     * ********************************************************************
+     *  repeat - repeat an operation n times.
+     * ********************************************************************
+     */
+    @Test
+    void repeatTest() {
+        Mono<List<String>> flux = getNumber()
+                .repeat(5)
+                .collectList();
+        StepVerifier.create(flux)
+                .assertNext(e -> {
+                    assertThat(e.size()).isEqualTo(6);
+                })
+                .verifyComplete();
+    }
+
+    private Mono<String> getNumber() {
+        return Mono.just("Time " +  new Date());
     }
 
 }
