@@ -25,7 +25,6 @@ import java.util.stream.Stream;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 import reactor.core.Exceptions;
@@ -1168,7 +1167,7 @@ public class ReactorTest {
                 .subscribe(System.out::println);
 
         StepVerifier.create(indexFlux)
-                .expectNext(1,2,3)
+                .expectNext(1, 2, 3)
                 .expectError(IndexOutOfBoundsException.class)
                 .verify();
     }
@@ -1557,6 +1556,7 @@ public class ReactorTest {
                 .subscribe(System.out::println);
         TimeUnit.SECONDS.sleep(4);
     }
+
     /**
      * ********************************************************************
      *  onSchedulersHook - if you have to use thread local
@@ -1636,7 +1636,7 @@ public class ReactorTest {
     }
 
     private Mono<String> getNumber() {
-        return Mono.just("Time " +  new Date());
+        return Mono.just("Time " + new Date());
     }
 
     /**
@@ -1646,7 +1646,7 @@ public class ReactorTest {
      */
 
     @Test
-    void retryWhen() {
+    void retryWhenTest() {
         Mono<String> mono = Mono.just("HELLO")
                 .flatMap(this::retryGreet)
                 .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
