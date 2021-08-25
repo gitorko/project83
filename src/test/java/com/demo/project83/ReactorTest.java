@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -37,6 +38,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+import reactor.util.retry.Retry;
 
 @Slf4j
 public class ReactorTest {
@@ -1635,6 +1637,46 @@ public class ReactorTest {
 
     private Mono<String> getNumber() {
         return Mono.just("Time " +  new Date());
+    }
+
+    /**
+     * ********************************************************************
+     *  retry when
+     * ********************************************************************
+     */
+
+    @Test
+    void retryWhen() {
+        Mono<String> mono = Mono.just("HELLO")
+                .flatMap(this::retryGreet)
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                        .filter(throwable -> throwable instanceof RuntimeException));
+        StepVerifier.create(mono)
+                .assertNext(e -> {
+                    assertThat(e).isEqualTo("HELLO WORLD");
+                })
+                .verifyComplete();
+
+    }
+
+    AtomicLong atomicLong = new AtomicLong();
+
+    private Mono<String> retryGreet(String name) {
+        return Mono.just(name)
+                .zipWith(greetAfter2Failure())
+                .map(t -> {
+                    return t.getT1() + " " + t.getT2();
+                });
+
+    }
+
+    private Mono<String> greetAfter2Failure() {
+        var attempt = atomicLong.getAndIncrement();
+        log.info("attempt value: {}", attempt);
+        if (attempt < 2) {
+            throw new RuntimeException("FAILURE");
+        }
+        return Mono.just("WORLD");
     }
 
 }
