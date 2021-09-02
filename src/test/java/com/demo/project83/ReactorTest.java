@@ -602,6 +602,8 @@ public class ReactorTest {
     /**
      * ********************************************************************
      *  mono error
+     *  onErrorResume: Gives a fallback stream when some exception occurs happens in the upstream.
+     *  doOnError: Side-effect operator. Suppose you want to log what error happens in the upstream.
      * ********************************************************************
      */
     @Test
