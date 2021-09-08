@@ -1681,6 +1681,34 @@ public class ReactorTest {
         return Mono.just("WORLD");
     }
 
+    /**
+     * ********************************************************************
+     *  onErrorMap - Transform an error emitted
+     * ********************************************************************
+     */
+    @Test
+    void onErrorMapTest() {
+        Flux flux = Flux.just("Jack", "Jill").map(u -> {
+            if (u.equals("Jill")) {
+                //always do throw here, never do return.
+                throw new IllegalArgumentException("Not valid");
+            }
+            if (u.equals("Jack")) {
+                throw new ClassCastException("Not valid");
+            }
+            return u;
+        }).onErrorMap(IllegalArgumentException.class, e -> {
+            log.info("Illegal Arg error");
+            throw new RuntimeException("Illegal Arg error");
+        }).onErrorMap(ClassCastException.class, e -> {
+            log.info("Class cast error");
+            throw new RuntimeException("Class cast error");
+        });
+
+        StepVerifier.create(flux)
+                .verifyError(RuntimeException.class);
+    }
+
 }
 
 class MyFeed {
