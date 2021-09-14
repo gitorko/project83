@@ -1709,6 +1709,44 @@ public class ReactorTest {
                 .verifyError(RuntimeException.class);
     }
 
+    /**
+     * ********************************************************************
+     *  generate - programmatically create flux, syncronous
+     * ********************************************************************
+     */
+    @Test
+    void fluxGenerateTest() {
+        Flux<Integer> flux = Flux.generate(() -> 1, (state, sink) -> {
+            sink.next(state * 2);
+            if (state == 10) {
+                sink.complete();
+            }
+            return state + 1;
+        });
+
+        StepVerifier.create(flux)
+                .expectNextCount(10)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  generate - programmatically create flux, syncronous
+     * ********************************************************************
+     */
+    @Test
+    void fluxCreateTest() {
+        List<String> names = Arrays.asList("jack", "jill");
+        Flux<String> flux =  Flux.create(sink -> {
+            names.forEach(sink::next);
+            sink.complete();
+        });
+
+        StepVerifier.create(flux)
+                .expectNextCount(2)
+                .verifyComplete();
+    }
+
 }
 
 class MyFeed {
