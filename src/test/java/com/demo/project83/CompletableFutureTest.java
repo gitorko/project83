@@ -23,7 +23,7 @@ public class CompletableFutureTest {
      */
     @Test
     @SneakyThrows
-    void blocking_Test() {
+    void blocking_test() {
         List<Future<String>> futureLst = new ArrayList<>();
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
@@ -46,7 +46,7 @@ public class CompletableFutureTest {
      */
     @Test
     @SneakyThrows
-    void nonBlocking_Callback_Test() {
+    void nonBlocking_callback_test() {
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
             executor.submit(() -> {
@@ -59,13 +59,12 @@ public class CompletableFutureTest {
 
     }
 
-
     /**
      * Does not return anything then use CompletableFuture.runAsync()
      */
     @Test
     @SneakyThrows
-    void runAsync_Test() {
+    void runAsync_test() {
         for (int i = 0; i < 5; i++) {
             CompletableFuture.runAsync(() -> {
                 CompletableFutureTest.processingJob2(new CompletableFuture<>());
