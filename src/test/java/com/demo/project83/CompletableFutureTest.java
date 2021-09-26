@@ -9,13 +9,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @Slf4j
 public class CompletableFutureTest {
+
+    static AtomicInteger counter = new AtomicInteger();
 
     /**
      * get() is blocking call. So main thread has to wait.
@@ -23,7 +27,8 @@ public class CompletableFutureTest {
      */
     @Test
     @SneakyThrows
-    void blocking_test() {
+    void blockingChain_test() {
+        counter = new AtomicInteger();
         List<Future<String>> futureLst = new ArrayList<>();
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
@@ -32,9 +37,12 @@ public class CompletableFutureTest {
             futureLst.add(future);
         }
         for (Future<String> future : futureLst) {
-            log.info(future.get() + " " + future.isDone());
+            //get is blocking the main thread here.
+            String message = future.get();
+            finishedGreetHello(message);
         }
         executor.shutdown();
+        Assertions.assertEquals(5, counter.get());
     }
 
     /**
@@ -50,7 +58,8 @@ public class CompletableFutureTest {
      */
     @Test
     @SneakyThrows
-    void nonBlocking_callback_test() {
+    void nonBlockingChain_test() {
+        counter = new AtomicInteger();
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
             int finalI = i;
@@ -59,27 +68,31 @@ public class CompletableFutureTest {
             });
         }
         //Give enough time for all threads to complete and return back with results.
-        TimeUnit.SECONDS.sleep(15);
+        TimeUnit.SECONDS.sleep(10);
         executor.shutdown();
+        Assertions.assertEquals(5, counter.get());
     }
 
     /**
-     * Does not return anything then use CompletableFuture.runAsync()
+     * When function does not return anything then use CompletableFuture.runAsync()
      * returns CompletableFuture<Void>
      */
     @Test
     @SneakyThrows
     void runAsync_test() {
+        counter = new AtomicInteger();
         for (int i = 0; i < 5; i++) {
             int finalI = i;
             CompletableFuture.runAsync(() -> {
                 greetHello("Jack_" + finalI);
             }).thenRun(() -> {
+                counter.incrementAndGet();
                 log.info("Completed!");
             });
         }
         //Give enough time for all threads to complete and return back with results.
         TimeUnit.SECONDS.sleep(5);
+        Assertions.assertEquals(5, counter.get());
     }
 
     /**
@@ -88,14 +101,19 @@ public class CompletableFutureTest {
     @Test
     @SneakyThrows
     void supplyAsync_test() {
+        counter = new AtomicInteger();
         for (int i = 0; i < 5; i++) {
             int finalI = i;
             CompletableFuture.supplyAsync(() -> {
                 return greetHello("Jack_" + finalI);
-            }).thenAccept(message -> log.info("Greeting: {}", message));
+            }).thenAccept(message -> {
+                counter.incrementAndGet();
+                log.info("Greeting: {}", message);
+            });
         }
         //Give enough time for all threads to complete and return back with results.
         TimeUnit.SECONDS.sleep(5);
+        Assertions.assertEquals(5, counter.get());
     }
 
     /**
@@ -105,16 +123,16 @@ public class CompletableFutureTest {
     @Test
     @SneakyThrows
     void thenApply_test() {
-        CompletableFuture<String> completableFuture1 = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
             //Do some computation & return the result
             return "hello ";
         }).thenApply(message -> {
-            return message + " world";
+            return message + "world";
         }).thenApply(message -> {
             return message.toUpperCase();
         });
         // Returns type CompletionStage<CompletionStage<CompletionStage<String>>>.
-        log.info("Greeting: {}", completableFuture1.get());
+        Assertions.assertEquals("HELLO WORLD", completableFuture.get());
     }
 
     /**
@@ -123,15 +141,18 @@ public class CompletableFutureTest {
     @Test
     @SneakyThrows
     void thenAccept_test() {
-        CompletableFuture<Void> completableFuture2 = CompletableFuture.supplyAsync(() -> {
+        counter = new AtomicInteger();
+        CompletableFuture<Void> completableFuture = CompletableFuture.supplyAsync(() -> {
             //Do some computation & return the result
             return "hello world";
         }).thenAccept(message -> {
             log.info("Got Message: {}", message);
         }).thenRun(() -> {
+            counter.incrementAndGet();
             log.info("Cant access previous result, just running!");
         });
-        completableFuture2.get();
+        completableFuture.get();
+        Assertions.assertEquals(1, counter.get());
     }
 
     /**
@@ -142,9 +163,9 @@ public class CompletableFutureTest {
     @SneakyThrows
     void thenCompose_test() {
         //Notice the flattened return type. Combines 2 dependent future.
-        CompletableFuture<String> completableFuture = CompletableFutureTest.getGreeting("Jack")
+        CompletableFuture<String> completableFuture = getGreeting("Jack")
                 .thenCompose(message -> CompletableFutureTest.transformMessage(message));
-        log.info("Greeting: {}", completableFuture.get());
+        Assertions.assertEquals("HELLO JACK", completableFuture.get());
     }
 
     /**
@@ -154,17 +175,17 @@ public class CompletableFutureTest {
     @SneakyThrows
     void thenCombine_test() {
         //Combines the 2 independent futures.
-        CompletableFuture<String> completableFuture = CompletableFutureTest.getGreeting("Jack")
+        CompletableFuture<String> completableFuture = getGreeting("Jack")
                 .thenCombine(CompletableFutureTest.getCurrentDate(), (message, currentDate) -> {
                     return CompletableFutureTest.addDateToMessage(message, currentDate);
                 });
-        log.info("Greeting: {}", completableFuture.get());
+        Assertions.assertTrue(completableFuture.get().contains("Hello Jack was sent on"));
     }
 
     @Test
     @SneakyThrows
     void exceptionally_test() {
-        CompletableFuture<String> completableFuture1 = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<String> completableFuture = CompletableFuture.supplyAsync(() -> {
             //Do some computation & return the result
             return "Stage 0";
         }).thenApply(result -> {
@@ -179,70 +200,52 @@ public class CompletableFutureTest {
         }).exceptionally(ex -> {
             return "Error in stage 2 : " + ex.getMessage();
         });
-        log.info("Got Message: {}", completableFuture1.get());
+        Assertions.assertTrue(completableFuture.get().contains("Error in stage 2"));
     }
 
     @Test
     @SneakyThrows
     void allOf_test() {
-        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Jack");
-        });
-        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Raj");
-        });
-        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Dan");
-        });
-
-        CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
+        counter = new AtomicInteger();
+        List<CompletableFuture<Void>> tasks = getListOfTasks();
+        CompletableFuture<Void> allTasks = CompletableFuture.allOf(tasks.get(0), tasks.get(1), tasks.get(2));
         allTasks.get();
         log.info("Waited for all tasks to complete and then returned!");
+        Assertions.assertEquals(3, counter.get());
     }
 
     @Test
     @SneakyThrows
     void anyOf_test() {
-        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Jack");
-        });
-        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Raj");
-        });
-        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Dan");
-        });
-
-        CompletableFuture<Object> allTasks = CompletableFuture.anyOf(task1, task2, task3);
+        counter = new AtomicInteger();
+        List<CompletableFuture<Void>> tasks = getListOfTasks();
+        CompletableFuture<Object> allTasks = CompletableFuture.anyOf(tasks.get(0), tasks.get(1), tasks.get(2));
         allTasks.get();
         log.info("Waited for any one task to complete and then returned!");
+        Assertions.assertTrue(counter.get() >= 1);
     }
 
     @Test
     @SneakyThrows
     void allOf_withTimeLimit_test() {
-        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Jack");
-        });
-        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Raj");
-        });
-        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.greetHello("Dan");
-        });
-
-        CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
+        counter = new AtomicInteger();
+        List<CompletableFuture<Void>> tasks = getListOfTasks();
+        CompletableFuture<Void> allTasks = CompletableFuture.allOf(tasks.get(0), tasks.get(1), tasks.get(2));
         try {
-            allTasks.get(3, TimeUnit.SECONDS);
-        } catch (TimeoutException ex) {
-            //Do Nothing!
-        }
-        log.info("Waited for 3 seconds and returned!");
+            allTasks.get(4, TimeUnit.SECONDS);
+        } catch (TimeoutException ex) {}
+        log.info("Waited for 4 seconds and returned!");
+        Assertions.assertTrue(counter.get() >= 2);
     }
 
     private static String greetHello(String name) {
         log.info("Got name: {}", name);
         return "Hello " + name;
+    }
+
+    private static void finishedGreetHello(String result) {
+        counter.incrementAndGet();
+        log.info("Finished greet chain: {}", result);
     }
 
     private static void greetHelloChain(String name, CompletableFuture<String> completableFuture) {
@@ -252,7 +255,8 @@ public class CompletableFutureTest {
     }
 
     private static void finishedGreetHelloChain(String result, Throwable t) {
-        log.info("Finished chain: {}", result);
+        counter.incrementAndGet();
+        log.info("Finished greet chain: {}", result);
     }
 
     private static CompletableFuture<String> getGreeting(String userName) {
@@ -275,6 +279,39 @@ public class CompletableFutureTest {
 
     private static String addDateToMessage(String message, Date currentDate) {
         return message + " was sent on  " + currentDate;
+    }
+
+    //Each task is delayed by few seconds
+    private static List<CompletableFuture<Void>> getListOfTasks() {
+        List<CompletableFuture<Void>> tasks = new ArrayList<>();
+        tasks.add(CompletableFuture.supplyAsync(() -> {
+            return greetHello("Jack");
+        }).thenAccept(message -> {
+            counter.incrementAndGet();
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {}
+            log.info("Greeting: {}", message);
+        }));
+        tasks.add(CompletableFuture.supplyAsync(() -> {
+            return greetHello("Raj");
+        }).thenAccept(message -> {
+            counter.incrementAndGet();
+            try {
+                TimeUnit.SECONDS.sleep(3);
+            } catch (InterruptedException e) {}
+            log.info("Greeting: {}", message);
+        }));
+        tasks.add(CompletableFuture.supplyAsync(() -> {
+            return greetHello("Dan");
+        }).thenAccept(message -> {
+            counter.incrementAndGet();
+            try {
+                TimeUnit.SECONDS.sleep(5);
+            } catch (InterruptedException e) {}
+            log.info("Greeting: {}", message);
+        }));
+        return tasks;
     }
 
 }
