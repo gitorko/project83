@@ -3,7 +3,6 @@ package com.demo.project83;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,7 +18,8 @@ import org.junit.jupiter.api.Test;
 public class CompletableFutureTest {
 
     /**
-     * get is blocking call. So main thread has to wait.
+     * get() is blocking call. So main thread has to wait.
+     * Old way with Future. Dont use it.
      */
     @Test
     @SneakyThrows
@@ -27,7 +27,8 @@ public class CompletableFutureTest {
         List<Future<String>> futureLst = new ArrayList<>();
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
-            Future<String> future = executor.submit(CompletableFutureTest::processingJob1);
+            int finalI = i;
+            Future<String> future = executor.submit(() -> greetHello("Jack_" + finalI));
             futureLst.add(future);
         }
         for (Future<String> future : futureLst) {
@@ -37,41 +38,64 @@ public class CompletableFutureTest {
     }
 
     /**
-     * callback attached so non blocking.
+     * Callback attached so non blocking.
      *
      * Ability to provide call back functionality.
      * You can manually set the return response on a CompletableFuture which you cant do on Future. You can cancel it as well. 
      * You can chain & combine CompletableFutures which is not possible with Future.
-     * Exception handling support in CompletableFutures which is not available in Future. 
+     * Exception handling support in CompletableFutures which is not available in Future.
+     *
+     * Although chaining can be done manually but not advised to use this approach.
+     * This example is for reference only.
      */
     @Test
     @SneakyThrows
     void nonBlocking_callback_test() {
         ExecutorService executor = Executors.newCachedThreadPool();
         for (int i = 0; i < 5; i++) {
+            int finalI = i;
             executor.submit(() -> {
-                CompletableFutureTest.processingJob2(new CompletableFuture<>());
+                CompletableFutureTest.greetHelloChain("Jack_" + finalI, new CompletableFuture<>());
             });
         }
         //Give enough time for all threads to complete and return back with results.
         TimeUnit.SECONDS.sleep(15);
         executor.shutdown();
-
     }
 
     /**
      * Does not return anything then use CompletableFuture.runAsync()
+     * returns CompletableFuture<Void>
      */
     @Test
     @SneakyThrows
     void runAsync_test() {
         for (int i = 0; i < 5; i++) {
+            int finalI = i;
             CompletableFuture.runAsync(() -> {
-                CompletableFutureTest.processingJob2(new CompletableFuture<>());
+                greetHello("Jack_" + finalI);
+            }).thenRun(() -> {
+                log.info("Completed!");
             });
         }
         //Give enough time for all threads to complete and return back with results.
-        TimeUnit.SECONDS.sleep(15);
+        TimeUnit.SECONDS.sleep(5);
+    }
+
+    /**
+     * Returns CompletableFuture<T>
+     */
+    @Test
+    @SneakyThrows
+    void supplyAsync_test() {
+        for (int i = 0; i < 5; i++) {
+            int finalI = i;
+            CompletableFuture.supplyAsync(() -> {
+                return greetHello("Jack_" + finalI);
+            }).thenAccept(message -> log.info("Greeting: {}", message));
+        }
+        //Give enough time for all threads to complete and return back with results.
+        TimeUnit.SECONDS.sleep(5);
     }
 
     /**
@@ -90,8 +114,7 @@ public class CompletableFutureTest {
             return message.toUpperCase();
         });
         // Returns type CompletionStage<CompletionStage<CompletionStage<String>>>.
-        log.info(completableFuture1.get());
-
+        log.info("Greeting: {}", completableFuture1.get());
     }
 
     /**
@@ -120,8 +143,8 @@ public class CompletableFutureTest {
     void thenCompose_test() {
         //Notice the flattened return type. Combines 2 dependent future.
         CompletableFuture<String> completableFuture = CompletableFutureTest.getGreeting("Jack")
-                .thenCompose(message -> CompletableFutureTest.transalateMessage(message));
-        log.info("Size of greeting: {}", completableFuture.get());
+                .thenCompose(message -> CompletableFutureTest.transformMessage(message));
+        log.info("Greeting: {}", completableFuture.get());
     }
 
     /**
@@ -133,9 +156,9 @@ public class CompletableFutureTest {
         //Combines the 2 independent futures.
         CompletableFuture<String> completableFuture = CompletableFutureTest.getGreeting("Jack")
                 .thenCombine(CompletableFutureTest.getCurrentDate(), (message, currentDate) -> {
-                    return CompletableFutureTest.updateLogTable(message, currentDate);
+                    return CompletableFutureTest.addDateToMessage(message, currentDate);
                 });
-        log.info(completableFuture.get());
+        log.info("Greeting: {}", completableFuture.get());
     }
 
     @Test
@@ -163,13 +186,13 @@ public class CompletableFutureTest {
     @SneakyThrows
     void allOf_test() {
         CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Jack");
         });
         CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Raj");
         });
         CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Dan");
         });
 
         CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
@@ -181,13 +204,13 @@ public class CompletableFutureTest {
     @SneakyThrows
     void anyOf_test() {
         CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Jack");
         });
         CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Raj");
         });
         CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Dan");
         });
 
         CompletableFuture<Object> allTasks = CompletableFuture.anyOf(task1, task2, task3);
@@ -199,13 +222,13 @@ public class CompletableFutureTest {
     @SneakyThrows
     void allOf_withTimeLimit_test() {
         CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Jack");
         });
         CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Raj");
         });
         CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
-            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+            CompletableFutureTest.greetHello("Dan");
         });
 
         CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
@@ -217,36 +240,21 @@ public class CompletableFutureTest {
         log.info("Waited for 3 seconds and returned!");
     }
 
-
-    private static String processingJob1() {
-        try {
-            Integer randomSleep = new Random().nextInt(10);
-            log.info("Running Thread: " + Thread.currentThread().getName());
-            TimeUnit.SECONDS.sleep(randomSleep);
-            return "Completed Thread: " + Thread.currentThread().getName();
-        } catch (InterruptedException ex) {
-            //No action
-        }
-        return "Failed!";
+    private static String greetHello(String name) {
+        log.info("Got name: {}", name);
+        return "Hello " + name;
     }
 
-    private static void processingJob2(CompletableFuture<String> completableFuture) {
-        try {
-            Integer randomSleep = new Random().nextInt(10);
-            log.info("Running Thread: " + Thread.currentThread().getName());
-            TimeUnit.SECONDS.sleep(randomSleep);
-            completableFuture.complete("Completed Thread: " + Thread.currentThread().getName());
-            completableFuture.whenComplete(CompletableFutureTest::finishedRunningJob);
-        } catch (InterruptedException ex) {
-            //No action.
-        }
+    private static void greetHelloChain(String name, CompletableFuture<String> completableFuture) {
+        log.info("Got name: {}", name);
+        completableFuture.complete("Hello " + name);
+        completableFuture.whenComplete(CompletableFutureTest::finishedGreetHelloChain);
     }
 
-    private static void finishedRunningJob(String result, Throwable t) {
-        log.info("Got Result: {}", result);
+    private static void finishedGreetHelloChain(String result, Throwable t) {
+        log.info("Finished chain: {}", result);
     }
 
-    //CompletableFuture with different return types.
     private static CompletableFuture<String> getGreeting(String userName) {
         return CompletableFuture.supplyAsync(() -> {
             return "Hello " + userName;
@@ -259,13 +267,13 @@ public class CompletableFutureTest {
         });
     }
 
-    private static CompletableFuture<String> transalateMessage(String message) {
+    private static CompletableFuture<String> transformMessage(String message) {
         return CompletableFuture.supplyAsync(() -> {
-            return message.replaceAll("Hello", "Aloha");
+            return message.toUpperCase();
         });
     }
 
-    private static String updateLogTable(String message, Date currentDate) {
+    private static String addDateToMessage(String message, Date currentDate) {
         return message + " was sent on  " + currentDate;
     }
 
