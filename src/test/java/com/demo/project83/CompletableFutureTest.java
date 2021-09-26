@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -104,9 +105,9 @@ public class CompletableFutureTest {
             //Do some computation & return the result
             return "hello world";
         }).thenAccept(message -> {
-            System.out.println("Got Message: " + message);
+            log.info("Got Message: {}", message);
         }).thenRun(() -> {
-            System.out.println("Cant access previous result, just running!");
+            log.info("Cant access previous result, just running!");
         });
         completableFuture2.get();
     }
@@ -121,7 +122,7 @@ public class CompletableFutureTest {
         //Notice the flattened return type. Combines 2 dependent future.
         CompletableFuture<String> completableFuture = CompletableFutureTest.getGreeting("Jack")
                 .thenCompose(message -> CompletableFutureTest.transalateMessage(message));
-        log.info("Size of greeting: " + completableFuture.get());
+        log.info("Size of greeting: {}", completableFuture.get());
     }
 
     /**
@@ -136,6 +137,85 @@ public class CompletableFutureTest {
                     return CompletableFutureTest.updateLogTable(message, currentDate);
                 });
         log.info(completableFuture.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void exceptionally_test() {
+        CompletableFuture<String> completableFuture1 = CompletableFuture.supplyAsync(() -> {
+            //Do some computation & return the result
+            return "Stage 0";
+        }).thenApply(result -> {
+            return result + " -> Stage 1";
+        }).exceptionally(ex -> {
+            return "Error in stage 1 : " + ex.getMessage();
+        }).thenApply(result -> {
+            if (true) {
+                throw new RuntimeException("My custom error!");
+            }
+            return result + " -> Stage 2";
+        }).exceptionally(ex -> {
+            return "Error in stage 2 : " + ex.getMessage();
+        });
+        log.info("Got Message: {}", completableFuture1.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void allOf_test() {
+        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+
+        CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
+        allTasks.get();
+        log.info("Waited for all tasks to complete and then returned!");
+    }
+
+    @Test
+    @SneakyThrows
+    void anyOf_test() {
+        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+
+        CompletableFuture<Object> allTasks = CompletableFuture.anyOf(task1, task2, task3);
+        allTasks.get();
+        log.info("Waited for any one task to complete and then returned!");
+    }
+
+    @Test
+    @SneakyThrows
+    void allOf_withTimeLimit_test() {
+        CompletableFuture<Void> task1 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task2 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+        CompletableFuture<Void> task3 = CompletableFuture.runAsync(() -> {
+            CompletableFutureTest.processingJob2(new CompletableFuture<>());
+        });
+
+        CompletableFuture<Void> allTasks = CompletableFuture.allOf(task1, task2, task3);
+        try {
+            allTasks.get(3, TimeUnit.SECONDS);
+        } catch (TimeoutException ex) {
+            //Do Nothing!
+        }
+        log.info("Waited for 3 seconds and returned!");
     }
 
 
