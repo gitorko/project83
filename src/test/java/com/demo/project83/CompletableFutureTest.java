@@ -118,7 +118,7 @@ public class CompletableFutureTest {
 
     /**
      * thenApply will return a nested CompletionStage.
-     * thenAccept will return a single CompletionStage, flattening effect like a flatMap
+     * thenApply returns CompletionStage & return value of the function.
      */
     @Test
     @SneakyThrows
@@ -137,6 +137,7 @@ public class CompletableFutureTest {
 
     /**
      * thenAccept will return a single CompletionStage, flattening effect like a flatMap
+     * thenAccept takes a Consumer and returns a Void & only the completion state.
      */
     @Test
     @SneakyThrows
