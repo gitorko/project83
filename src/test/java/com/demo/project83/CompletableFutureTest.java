@@ -3,6 +3,7 @@ package com.demo.project83;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -10,6 +11,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -234,9 +236,37 @@ public class CompletableFutureTest {
         CompletableFuture<Void> allTasks = CompletableFuture.allOf(tasks.get(0), tasks.get(1), tasks.get(2));
         try {
             allTasks.get(4, TimeUnit.SECONDS);
-        } catch (TimeoutException ex) {}
+        } catch (TimeoutException ex) {
+            log.error("timeout!", ex);
+        }
         log.info("Waited for 4 seconds and returned!");
         Assertions.assertTrue(counter.get() >= 2);
+    }
+
+    @Test
+    @SneakyThrows
+    void allOf_iterate() {
+        List<String> names = List.of("Jack", "Adam", "Ram", "Ajay");
+        List<CompletableFuture<String>> customersFuture = names.stream()
+                .map(userName -> checkName(userName))
+                .collect(Collectors.toList());
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(customersFuture.toArray(new CompletableFuture[customersFuture.size()]));
+
+        CompletableFuture<List<String>> allCustomersFuture = allFutures.thenApply(v -> customersFuture.stream()
+                .map(pageContentFuture -> pageContentFuture.join())
+                .filter(Objects::isNull)
+                .collect(Collectors.toList()));
+
+        List<String> customers = allCustomersFuture.get();
+        Assertions.assertEquals(2, customers.size());
+    }
+
+    private static CompletableFuture<String> checkName(String userName) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (userName.startsWith("A")) return userName;
+            return null;
+        });
     }
 
     private static String greetHello(String name) {
@@ -291,7 +321,8 @@ public class CompletableFutureTest {
             counter.incrementAndGet();
             try {
                 TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {}
+            } catch (InterruptedException e) {
+            }
             log.info("Greeting: {}", message);
         }));
         tasks.add(CompletableFuture.supplyAsync(() -> {
@@ -300,7 +331,8 @@ public class CompletableFutureTest {
             counter.incrementAndGet();
             try {
                 TimeUnit.SECONDS.sleep(3);
-            } catch (InterruptedException e) {}
+            } catch (InterruptedException e) {
+            }
             log.info("Greeting: {}", message);
         }));
         tasks.add(CompletableFuture.supplyAsync(() -> {
@@ -309,7 +341,8 @@ public class CompletableFutureTest {
             counter.incrementAndGet();
             try {
                 TimeUnit.SECONDS.sleep(5);
-            } catch (InterruptedException e) {}
+            } catch (InterruptedException e) {
+            }
             log.info("Greeting: {}", message);
         }));
         return tasks;
