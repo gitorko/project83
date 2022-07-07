@@ -27,7 +27,7 @@ public class ReactorWebClientTest {
     static String HOST = "https://jsonplaceholder.typicode.com";
 
     @Test
-    public void getApi() {
+    public void getPostTitle() {
         Mono<String> mono = WebClient.create(HOST)
                 .get()
                 .uri("/posts/{0}", 1)
@@ -45,7 +45,7 @@ public class ReactorWebClientTest {
     }
 
     @Test
-    public void getApi2() {
+    public void getPostEntity() {
         Mono<PostEntity> mono = WebClient.create(HOST)
                 .get()
                 .uri("/posts/{0}", 1)
@@ -63,7 +63,7 @@ public class ReactorWebClientTest {
     }
 
     @Test
-    public void getAllApi() {
+    public void getAllPosts() {
         Flux<PostEntity> mono = WebClient.create(HOST)
                 .get()
                 .uri("/posts")
@@ -81,7 +81,7 @@ public class ReactorWebClientTest {
     }
 
     @Test
-    public void postApi() {
+    public void savePost() {
         PostEntity postEntity = PostEntity.builder()
                 .userId(1)
                 .title("my post")
@@ -104,7 +104,7 @@ public class ReactorWebClientTest {
     }
 
     @Test
-    public void deleteApi() {
+    public void deletePost() {
         Mono<Void> mono = WebClient.create(HOST)
                 .delete()
                 .uri("/posts/{0}", 1)

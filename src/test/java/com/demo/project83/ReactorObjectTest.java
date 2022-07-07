@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
@@ -23,21 +24,27 @@ import reactor.util.function.Tuples;
 @Slf4j
 public class ReactorObjectTest {
 
-    @Test
-    void fluxIntersectCommonApproach1() {
-        Flux<ProjectDTO> fluxFromRequest = Flux.just(
+    Flux<ProjectDTO> fluxFromRequest;
+    Flux<ProjectEntity> fluxFromDb;
+
+    @BeforeEach
+    public void setup() {
+        fluxFromRequest = Flux.just(
                 ProjectDTO.builder().name("p3").build(),
                 ProjectDTO.builder().name("p1").build(),
                 ProjectDTO.builder().name("p5").build()
         );
 
-        Flux<ProjectEntity> fluxFromDb = Flux.just(
+        fluxFromDb = Flux.just(
                 ProjectEntity.builder().entityName("p5").build(),
                 ProjectEntity.builder().entityName("p4").build(),
                 ProjectEntity.builder().entityName("p1").build(),
                 ProjectEntity.builder().entityName("p2").build()
         );
+    }
 
+    @Test
+    void fluxIntersectCommonApproach1() {
         Flux<ProjectEntity> commonFlux = fluxFromDb.filter(f -> {
             //Inefficient
             //Not for live stream or stream that can be subscribed only once.
@@ -53,19 +60,6 @@ public class ReactorObjectTest {
 
     @Test
     void fluxIntersectCommonApproach2() {
-        Flux<ProjectDTO> fluxFromRequest = Flux.just(
-                ProjectDTO.builder().name("p3").build(),
-                ProjectDTO.builder().name("p1").build(),
-                ProjectDTO.builder().name("p5").build()
-        );
-
-        Flux<ProjectEntity> fluxFromDb = Flux.just(
-                ProjectEntity.builder().entityName("p5").build(),
-                ProjectEntity.builder().entityName("p4").build(),
-                ProjectEntity.builder().entityName("p1").build(),
-                ProjectEntity.builder().entityName("p2").build()
-        );
-
         Flux<ProjectEntity> commonFlux = fluxFromRequest
                 .map(dto -> dto.getName())
                 .collect(Collectors.toSet())
@@ -84,19 +78,6 @@ public class ReactorObjectTest {
 
     @Test
     void fluxIntersectCommonApproach3() {
-        Flux<ProjectDTO> fluxFromRequest = Flux.just(
-                ProjectDTO.builder().name("p3").build(),
-                ProjectDTO.builder().name("p1").build(),
-                ProjectDTO.builder().name("p5").build()
-        );
-
-        Flux<ProjectEntity> fluxFromDb = Flux.just(
-                ProjectEntity.builder().entityName("p5").build(),
-                ProjectEntity.builder().entityName("p4").build(),
-                ProjectEntity.builder().entityName("p1").build(),
-                ProjectEntity.builder().entityName("p2").build()
-        );
-
         Flux<ProjectEntity> commonFlux = fluxFromDb.join(fluxFromRequest, s -> Flux.never(), s -> Flux.never(), Tuples::of)
                 //Filter out matching
                 .filter(t -> t.getT1().getEntityName().equals(t.getT2().getName()))
