@@ -498,6 +498,37 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
+     *  switchIfEmpty - Used as if-else block
+     * ********************************************************************
+     */
+    @Test
+    void switchIfElseTest() {
+        final String name = "Jack";
+        Mono<String> mono = Mono.just(name)
+                .flatMap(this::wishGoodMorning)
+                .switchIfEmpty(Mono.defer(() -> this.wishGoodNight(name)));
+
+        StepVerifier.create(mono)
+                .expectNext("Good Night Jack")
+                .verifyComplete();
+    }
+
+    private Mono<String> wishGoodMorning(String name) {
+        log.info("wishGoodMorning {}", name);
+        if (name.equals("Jack")) {
+            return Mono.empty();
+        } else {
+            return Mono.just("Good Morning " + name);
+        }
+    }
+
+    private Mono<String> wishGoodNight(String name) {
+        log.info("wishGoodNight {}", name);
+        return Mono.just("Good Night " + name);
+    }
+
+    /**
+     * ********************************************************************
      *  intersect with filterWhen - compare 2 flux for common elements
      * ********************************************************************
      */
