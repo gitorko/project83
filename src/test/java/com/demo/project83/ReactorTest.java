@@ -504,12 +504,13 @@ public class ReactorTest {
     @Test
     void switchIfElseTest() {
         final String name = "Jack";
+        //No need to use Mono.defer on the switchIfEmpty
         Mono<String> mono = Mono.just(name)
                 .flatMap(this::wishGoodMorning)
-                .switchIfEmpty(Mono.defer(() -> this.wishGoodNight(name)));
+                .switchIfEmpty(this.wishGoodNight(name));
 
         StepVerifier.create(mono)
-                .expectNext("Good Night Jack")
+                .expectNext("GOOD NIGHT JACK")
                 .verifyComplete();
     }
 
@@ -524,7 +525,8 @@ public class ReactorTest {
 
     private Mono<String> wishGoodNight(String name) {
         log.info("wishGoodNight {}", name);
-        return Mono.just("Good Night " + name);
+        return Mono.just("Good Night " + name)
+                .map(String::toUpperCase);
     }
 
     /**
