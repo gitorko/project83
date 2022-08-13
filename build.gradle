@@ -1,12 +1,12 @@
 plugins {
-    id 'org.springframework.boot' version '2.5.2'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'org.springframework.boot' version '2.7.2'
+    id 'io.spring.dependency-management' version '1.0.12.RELEASE'
     id 'java'
 }
 
 group = 'com.demo.project83'
-version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '11'
+version = '1.0.0'
+sourceCompatibility = '17'
 
 configurations {
     compileOnly {
