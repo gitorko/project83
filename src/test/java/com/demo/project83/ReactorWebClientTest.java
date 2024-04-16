@@ -2,10 +2,15 @@ package com.demo.project83;
 
 import java.util.Map;
 
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.resolver.DefaultAddressResolverGroup;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -13,10 +18,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 import reactor.test.StepVerifier;
 
 @ExtendWith(SpringExtension.class)
@@ -26,11 +33,28 @@ public class ReactorWebClientTest {
 
     static String HOST = "https://jsonplaceholder.typicode.com";
 
+    @SneakyThrows
+    public static WebClient getWebClient() {
+        SslContext sslContext = SslContextBuilder
+                .forClient()
+                .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                .build();
+        WebClient webClient = WebClient
+                .builder()
+                .clientConnector(new ReactorClientHttpConnector(
+                                HttpClient.create()
+                                        .secure(t -> t.sslContext(sslContext))
+                                        .resolver(DefaultAddressResolverGroup.INSTANCE)
+                        )
+                ).build();
+        return webClient;
+    }
+
     @Test
     public void getPostTitle() {
-        Mono<String> mono = WebClient.create(HOST)
+        Mono<String> mono = getWebClient()
                 .get()
-                .uri("/posts/{0}", 1)
+                .uri(HOST + "/posts/{0}", 1)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchangeToMono(response -> response.bodyToMono(Map.class))
@@ -46,9 +70,9 @@ public class ReactorWebClientTest {
 
     @Test
     public void getPostEntity() {
-        Mono<PostEntity> mono = WebClient.create(HOST)
+        Mono<PostEntity> mono = getWebClient()
                 .get()
-                .uri("/posts/{0}", 1)
+                .uri(HOST + "/posts/{0}", 1)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
@@ -64,9 +88,9 @@ public class ReactorWebClientTest {
 
     @Test
     public void getAllPosts() {
-        Flux<PostEntity> mono = WebClient.create(HOST)
+        Flux<PostEntity> mono = getWebClient()
                 .get()
-                .uri("/posts")
+                .uri( HOST + "/posts")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
@@ -87,9 +111,9 @@ public class ReactorWebClientTest {
                 .title("my post")
                 .body("hello world")
                 .build();
-        Mono<PostEntity> mono = WebClient.create(HOST)
+        Mono<PostEntity> mono = getWebClient()
                 .post()
-                .uri("/posts/")
+                .uri(HOST + "/posts/")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .body(Mono.just(postEntity), PostEntity.class)
                 .retrieve()
@@ -105,9 +129,9 @@ public class ReactorWebClientTest {
 
     @Test
     public void deletePost() {
-        Mono<Void> mono = WebClient.create(HOST)
+        Mono<Void> mono = getWebClient()
                 .delete()
-                .uri("/posts/{0}", 1)
+                .uri(HOST + "/posts/{0}", 1)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .bodyToMono(Void.class);
