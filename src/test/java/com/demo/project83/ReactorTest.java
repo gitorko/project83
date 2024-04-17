@@ -1336,6 +1336,25 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
+     *  subscribeOn - influences upstream (whole chain)
+     * ********************************************************************
+     */
+    @Test
+    void subscribeOnTest2() {
+        Flux numbFlux = Flux.range(1, 5)
+                .map(i -> {
+                    log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
+                    return i;
+                }).subscribeOn(Schedulers.newSingle("my-thread"))
+                .map(i -> {
+                    log.info("Map2 Num: {}, Thread: {}", i, Thread.currentThread().getName());
+                    return i;
+                });
+        numbFlux.subscribe();
+    }
+
+    /**
+     * ********************************************************************
      *  publishOn - influences downstream
      * ********************************************************************
      */
@@ -1346,6 +1365,25 @@ public class ReactorTest {
                     log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
                     return i;
                 }).publishOn(Schedulers.single())
+                .map(i -> {
+                    log.info("Map2 Num: {}, Thread: {}", i, Thread.currentThread().getName());
+                    return i;
+                });
+        numbFlux.subscribe();
+    }
+
+    /**
+     * ********************************************************************
+     *  publishOn - influences downstream
+     * ********************************************************************
+     */
+    @Test
+    void publishOnTest2() {
+        Flux numbFlux = Flux.range(1, 5)
+                .map(i -> {
+                    log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
+                    return i;
+                }).publishOn(Schedulers.newSingle("my-thread"))
                 .map(i -> {
                     log.info("Map2 Num: {}, Thread: {}", i, Thread.currentThread().getName());
                     return i;
@@ -1520,6 +1558,25 @@ public class ReactorTest {
                             .map(ReactorTest::capitalizeString)
                             .subscribeOn(Schedulers.parallel());
                 })
+                .log();
+        StepVerifier.create(flux1)
+                .expectNext("APPLE", "ORANGE", "BANANA")
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  flatMapSequential - Maintains order but executes in parallel
+     * ********************************************************************
+     */
+    @Test
+    void flatMapSequentialConcurrencyTest() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana")
+                .flatMapSequential(name -> {
+                    return Mono.just(name)
+                            .map(ReactorTest::capitalizeString)
+                            .subscribeOn(Schedulers.parallel());
+                }, 1)
                 .log();
         StepVerifier.create(flux1)
                 .expectNext("APPLE", "ORANGE", "BANANA")
