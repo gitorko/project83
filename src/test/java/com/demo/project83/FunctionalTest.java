@@ -1,5 +1,6 @@
 package com.demo.project83;
 
+import static com.demo.project83.common.HelperUtil.getCustomers;
 import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.collectingAndThen;
@@ -34,21 +35,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import com.demo.project83.common.Customer;
+import com.demo.project83.common.GreetingFunction;
 import org.junit.jupiter.api.Test;
 
-public class FunctionalTest {
 
-    List<Customer> customerList = List.of(
-            Customer.builder().name("Peter Parker").city("london").age(32).build(),
-            Customer.builder().name("Joe").city("paris").age(28).build(),
-            Customer.builder().name("Marie").city("rome").age(31).build(),
-            Customer.builder().name("Peter").city("rome").age(30).build(),
-            Customer.builder().name("Raj").city("delhi").age(33).build(),
-            Customer.builder().name("Simon").city("london").age(26).build()
-    );
+public class FunctionalTest {
 
     /**
      * ********************************************************************
@@ -60,27 +52,27 @@ public class FunctionalTest {
 
         // Group all person by city in pre Java 8 world
         Map<String, List<Customer>> personByCity1 = new HashMap<>();
-        for (Customer p : customerList) {
+        for (Customer p : getCustomers()) {
             if (!personByCity1.containsKey(p.getCity())) {
                 personByCity1.put(p.getCity(), new ArrayList<>());
             }
             personByCity1.get(p.getCity()).add(p);
         }
         System.out.println("Person grouped by cities : " + personByCity1);
-        assertEquals(2, personByCity1.get("rome").size());
+        assertEquals(1, personByCity1.get("rome").size());
         System.out.println("---------------------------------------------------");
 
         // Group objects in Java 8
-        Map<String, List<Customer>> personByCity2 = customerList.stream()
+        Map<String, List<Customer>> personByCity2 = getCustomers().stream()
                 .collect(groupingBy(Customer::getCity));
         System.out.println("Person grouped by cities in Java 8: " + personByCity2);
-        assertEquals(2, personByCity2.get("rome").size());
+        assertEquals(1, personByCity2.get("rome").size());
         System.out.println("---------------------------------------------------");
 
         // Now let's group person by age
-        Map<Integer, List<Customer>> personByAge = customerList.stream().collect(groupingBy(Customer::getAge));
+        Map<Integer, List<Customer>> personByAge = getCustomers().stream().collect(groupingBy(Customer::getAge));
         System.out.println("Person grouped by age in Java 8: " + personByAge);
-        assertEquals(1, personByAge.get(32).size());
+        assertEquals(2, personByAge.get(32).size());
         System.out.println("---------------------------------------------------");
     }
 
@@ -120,7 +112,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         Consumer<String> hello = name -> System.out.println("Hello, " + name);
-        customerList.forEach(c -> hello.accept(c.getName()));
+        getCustomers().forEach(c -> hello.accept(c.getName()));
         System.out.println("---------------------------------------------------");
 
         //example of a lambda made from an instance method
@@ -129,7 +121,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //As anonymous class, dont use this, provided for explanation only.
-        customerList.forEach(new Consumer<Customer>() {
+        getCustomers().forEach(new Consumer<Customer>() {
             @Override
             public void accept(Customer customer) {
                 System.out.println("Hello " + customer.getName());
@@ -257,12 +249,12 @@ public class FunctionalTest {
             //predicate returned
             return (str) -> str.length() > minLen;
         };
-        List<String> collect = customerList.stream()
+        List<String> collect = getCustomers().stream()
                 .map(Customer::getName)
                 .filter(checkLength.apply(4))
                 .collect(toList());
         collect.forEach(System.out::println);
-        assertEquals(4, collect.size());
+        assertEquals(2, collect.size());
         System.out.println("---------------------------------------------------");
     }
 
@@ -274,27 +266,27 @@ public class FunctionalTest {
     @Test
     public void collectTest() {
         //Collect customers who are below 30.
-        List<Customer> result = customerList.stream()
+        List<Customer> result = getCustomers().stream()
                 .filter(e -> e.getAge() < 30)
                 .collect(toList());
-        assertEquals(2, result.size());
+        assertEquals(1, result.size());
         System.out.println("---------------------------------------------------");
 
         //get all employee names in List<String>
         //Using toCollection you can specify the type
-        ArrayList<String> result2 = customerList.stream()
+        ArrayList<String> result2 = getCustomers().stream()
                 .map(e -> e.getName())
                 .collect(Collectors.toCollection(ArrayList::new));
-        assertEquals(6, result2.size());
+        assertEquals(5, result2.size());
         System.out.println("---------------------------------------------------");
 
         //Collect and join to single string separated by coma.
-        String customerString = customerList.stream()
+        String customerString = getCustomers().stream()
                 .filter(e -> e.getAge() > 30)
                 .map(e -> e.getName())
                 .collect(Collectors.joining(", "));
         System.out.println(customerString);
-        assertEquals("Peter Parker, Marie, Raj", customerString);
+        assertEquals("jack, raj, peter, marie", customerString);
         System.out.println("---------------------------------------------------");
 
     }
@@ -308,14 +300,14 @@ public class FunctionalTest {
     void collectToMapTest() {
 
         //Collect a map with name as key and age as value.
-        customerList.stream()
+        getCustomers().stream()
                 .filter(e -> e.getAge() > 30)
                 .collect(Collectors.toMap(Customer::getName, Customer::getAge))
                 .forEach((k, v) -> System.out.println(k + ":" + v));
         System.out.println("---------------------------------------------------");
 
         //Collect a map by name + city as key customer as value
-        customerList.stream()
+        getCustomers().stream()
                 .collect(Collectors.toMap(c -> c.getName() + "-" + c.getCity(), c -> c))
                 .forEach((k, v) -> System.out.println(k + ":" + v));
         System.out.println("---------------------------------------------------");
@@ -377,15 +369,15 @@ public class FunctionalTest {
     @Test
     public void collectSumTest() {
         //Sum all ages.
-        int total = customerList.stream()
+        int total = getCustomers().stream()
                 .collect(Collectors.summingInt(Customer::getAge));
-        assertEquals(total, 180);
+        assertEquals(total, 163);
         System.out.println("---------------------------------------------------");
 
-        int total2 = customerList.stream()
+        int total2 = getCustomers().stream()
                 .mapToInt(Customer::getAge)
                 .sum();
-        assertEquals(total2, 180);
+        assertEquals(total2, 163);
         System.out.println("---------------------------------------------------");
     }
 
@@ -397,16 +389,16 @@ public class FunctionalTest {
     @Test
     public void sortedTest() {
 
-        List<String> sortResult = customerList.stream()
+        List<String> sortResult = getCustomers().stream()
                 .map(c -> c.getName())
                 .sorted((a, b) -> b.compareTo(a))
                 .collect(toList());
         sortResult.forEach(System.out::println);
 
         //Avoid using the below as it modifies the orignial list.
-        //Collections.sort(customerList, (a, b) -> b.getName().compareTo(a.getName()));
+        //Collections.sort(getCustomers(), (a, b) -> b.getName().compareTo(a.getName()));
 
-        List<String> expectedResult = List.of("Simon", "Raj", "Peter Parker", "Peter", "Marie", "Joe");
+        List<String> expectedResult = List.of("raj", "peter", "marie", "joe", "jack");
         assertEquals(expectedResult, sortResult);
         System.out.println("---------------------------------------------------");
 
@@ -419,7 +411,7 @@ public class FunctionalTest {
      */
     @Test
     public void filterTest() {
-        customerList.stream()
+        getCustomers().stream()
                 .filter(customer -> {
                     return customer.getName().startsWith("P"); //predicate
                 })
@@ -434,7 +426,7 @@ public class FunctionalTest {
      */
     @Test
     public void findFirstTest() {
-        customerList
+        getCustomers()
                 .stream()
                 .filter(customer -> customer.getName().startsWith("P"))
                 .findFirst()
@@ -449,7 +441,7 @@ public class FunctionalTest {
      */
     @Test
     public void mapToIntTest() {
-        int sum = customerList.stream()
+        int sum = getCustomers().stream()
                 .mapToInt(Customer::getAge)
                 .sum();
         System.out.println(sum);
@@ -474,7 +466,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //max of age
-        OptionalInt max = customerList.stream()
+        OptionalInt max = getCustomers().stream()
                 .mapToInt(Customer::getAge)
                 .max();
         System.out.println(max.getAsInt());
@@ -490,7 +482,7 @@ public class FunctionalTest {
     @Test
     public void doubleSortTest() {
         //Sort customer by name and then by age.
-        customerList.stream()
+        getCustomers().stream()
                 .sorted(
                         comparing(Customer::getName)
                                 .thenComparing(Customer::getAge)
@@ -507,7 +499,7 @@ public class FunctionalTest {
     @Test
     public void flatMapTest() {
         //Get chars of all customer names.
-        Set<String> collect = customerList.stream()
+        Set<String> collect = getCustomers().stream()
                 .map(Customer::getName)
                 .flatMap(name -> Stream.of(name.split("")))
                 .collect(toSet());
@@ -532,13 +524,13 @@ public class FunctionalTest {
     public void groupByTest() {
 
         //group by name and get list of customers with same name.
-        Map<String, List<Customer>> result1 = customerList.stream()
+        Map<String, List<Customer>> result1 = getCustomers().stream()
                 .collect(groupingBy(Customer::getName));
         System.out.println(result1);
         System.out.println("---------------------------------------------------");
 
         //group by name and get list of ages if customer with same name.
-        Map<String, List<Integer>> result2 = customerList.stream()
+        Map<String, List<Integer>> result2 = getCustomers().stream()
                 .collect(
                         groupingBy(Customer::getName,
                                 mapping(Customer::getAge, toList())));
@@ -546,7 +538,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //Group by age, employees who name is greater than 4 chars.
-        Map<Integer, List<String>> result3 = customerList.stream()
+        Map<Integer, List<String>> result3 = getCustomers().stream()
                 .collect(
                         groupingBy(Customer::getAge,
                                 mapping(
@@ -558,7 +550,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //group by age all customers name
-        Map<Integer, List<String>> result4 = customerList.stream()
+        Map<Integer, List<String>> result4 = getCustomers().stream()
                 .collect(
                         groupingBy(Customer::getAge,
                                 mapping(Customer::getName, toList()))
@@ -567,7 +559,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //count emp with same name.
-        Map<String, Long> result5 = customerList.stream()
+        Map<String, Long> result5 = getCustomers().stream()
                 .collect(groupingBy(Customer::getName, Collectors.counting()));
         System.out.println(result5);
         System.out.println("---------------------------------------------------");
@@ -582,16 +574,16 @@ public class FunctionalTest {
     @Test
     public void maxByTest() {
         //emp with max age
-        Optional<Customer> maxEmp = customerList.stream()
+        Optional<Customer> maxEmp = getCustomers().stream()
                 .collect(maxBy(comparing(Customer::getAge)));
         System.out.println(maxEmp.get());
         System.out.println("---------------------------------------------------");
 
         //emp with max age and print name instead of emp.
-        String result = customerList.stream()
+        String result = getCustomers().stream()
                 .collect(collectingAndThen(
-                        maxBy(comparing(Customer::getAge)),
-                        e -> e.map(Customer::getName).orElse("")
+                                maxBy(comparing(Customer::getAge)),
+                                e -> e.map(Customer::getName).orElse("")
                         )
                 );
         System.out.println(result);
@@ -607,7 +599,7 @@ public class FunctionalTest {
     @Test
     public void collectingAndThenTest() {
         //convert long to int.
-        Map<String, Integer> result = customerList.stream()
+        Map<String, Integer> result = getCustomers().stream()
                 .collect(groupingBy(Customer::getName,
                         collectingAndThen(Collectors.counting(),
                                 Long::intValue
@@ -624,7 +616,7 @@ public class FunctionalTest {
     @Test
     public void partitioningByTest() {
         //2 list of even odd employees
-        Map<Boolean, List<Customer>> result = customerList.stream()
+        Map<Boolean, List<Customer>> result = getCustomers().stream()
                 .collect(Collectors.partitioningBy(p -> p.getAge() % 2 == 0));
         System.out.println(result);
         System.out.println("---------------------------------------------------");
@@ -666,7 +658,7 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
 
         //Use reduce to collect to a list. Given only to explain, use toList in real world.
-        customerList.stream()
+        getCustomers().stream()
                 .filter(e -> e.getAge() > 30)
                 .map(e -> e.getName())
                 .map(String::toUpperCase)
@@ -715,18 +707,4 @@ public class FunctionalTest {
         System.out.println("---------------------------------------------------");
     }
 
-}
-
-@Builder
-@AllArgsConstructor
-@Data
-class Customer {
-    public String name;
-    public String city;
-    public Integer age;
-}
-
-@FunctionalInterface
-interface GreetingFunction {
-    void sayMessage(String message);
 }

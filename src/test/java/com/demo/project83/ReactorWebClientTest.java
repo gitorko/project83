@@ -2,14 +2,11 @@ package com.demo.project83;
 
 import java.util.Map;
 
+import com.demo.project83.common.PostEntity;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.resolver.DefaultAddressResolverGroup;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
@@ -142,13 +139,4 @@ public class ReactorWebClientTest {
     }
 }
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class PostEntity {
-    int userId;
-    int id;
-    String title;
-    String body;
-}
+
