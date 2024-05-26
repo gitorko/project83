@@ -137,6 +137,24 @@ public class ReactorWebClientTest {
                 .verifyComplete();
 
     }
+
+    @Test
+    public void getAllPostsPageByPage() {
+        Flux<PostEntity> mono = getWebClient()
+                .get()
+                .uri( HOST + "/posts?_page=1&_limit=10")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToFlux(PostEntity.class);
+
+        StepVerifier.create(mono)
+                .assertNext(e -> {
+                    log.info("title: {}", e);
+                    Assertions.assertNotNull(e);
+                }).expectComplete();
+
+    }
 }
 
 

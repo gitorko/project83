@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import com.demo.project83.common.CompanyVO;
 import com.demo.project83.common.Customer;
+import com.demo.project83.common.Employee;
 import com.demo.project83.common.HelperUtil;
 import com.demo.project83.common.MyFeed;
 import com.demo.project83.common.MyListener;
@@ -68,6 +69,9 @@ import reactor.util.retry.RetryBackoffSpec;
  * Processor - Publisher + Subscriber
  *
  * Spring reactor is a Push + Pull data flow model
+ *
+ * Subscribers request for data. Publishers provide data
+ * subscribers (downstream) and publishers (upstream)
  */
 @Slf4j
 public class ReactorTest {
@@ -265,6 +269,8 @@ public class ReactorTest {
      * ********************************************************************
      *  flatMap - transform object 1-1 or 1-N in asynchronous fashion, returns back Mono/Flux. Use when there is delay/IO involved.
      *  map - transform an object 1-1 in fixed time in synchronous fashion. Use when there is no delay/IO involved.
+     *
+     * flatMap - processing is concurrent
      * ********************************************************************
      */
     @Test
@@ -294,6 +300,22 @@ public class ReactorTest {
         //No guarantee of order
         StepVerifier.create(flux3)
                 .expectNextCount(5)
+                .verifyComplete();
+    }
+
+    @Test
+    void test_flatMap_nonConcurrent() {
+        Flux<Integer> flux = Flux.range(1, 10)
+                .map(i -> i)
+                .flatMap(i -> {
+                    System.out.println(i);
+                    return Mono.just(i);
+                }, 1);
+        flux.subscribe(System.out::println);
+        //No guarantee of order, jack can come first or raj can come first.
+        StepVerifier.create(flux)
+                .expectSubscription()
+                .expectNextCount(10)
                 .verifyComplete();
     }
 
@@ -1615,7 +1637,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void thenManyChainTest() {
+    void test_thenManyChain() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
                 .thenMany(HelperUtil.deleteFromDb())
@@ -1624,7 +1646,7 @@ public class ReactorTest {
     }
 
     @Test
-    void thenEmptyTest() {
+    void test_thenEmpty() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
                 .thenMany(HelperUtil.saveToDb())
@@ -1633,7 +1655,7 @@ public class ReactorTest {
     }
 
     @Test
-    void thenTest() {
+    void test_then() {
         Flux<String> names = Flux.just("Jack", "Jill");
         names.map(String::toUpperCase)
                 .thenMany(HelperUtil.saveToDb())
@@ -1649,7 +1671,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void monoFirstTest() {
+    void test_monoFirst() {
         Mono<String> mono1 = Mono.just("Jack").delayElement(Duration.ofSeconds(1));
         Mono<String> mono2 = Mono.just("Jill");
         //Return the mono which returns its value faster
@@ -1666,7 +1688,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    public void bufferGroupTest() {
+    public void test_bufferGroup() {
         Flux<List<Integer>> flux1 = Flux
                 .range(1, 7)
                 .buffer(2);
@@ -1681,7 +1703,7 @@ public class ReactorTest {
 
     @Test
     @SneakyThrows
-    public void tickClockTest() {
+    void test_tickClock() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         Flux.merge(fastClock, slowClock).subscribe(System.out::println);
@@ -1690,7 +1712,7 @@ public class ReactorTest {
 
     @Test
     @SneakyThrows
-    public void tickMergeClockTest() {
+    public void test_tickMergeClock() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         Flux clock = Flux.merge(slowClock, fastClock);
@@ -1701,7 +1723,7 @@ public class ReactorTest {
 
     @Test
     @SneakyThrows
-    public void tickZipClockTest() {
+    void test_tickZipClock() {
         Flux fastClock = Flux.interval(Duration.ofSeconds(1)).map(tick -> "fast tick " + tick);
         Flux slowClock = Flux.interval(Duration.ofSeconds(2)).map(tick -> "slow tick " + tick);
         fastClock.zipWith(slowClock, (tick, time) -> tick + " " + time).subscribe(System.out::println);
@@ -1710,7 +1732,7 @@ public class ReactorTest {
 
     @Test
     @SneakyThrows
-    public void emitterTest() {
+    void test_emitter() {
         MyFeed myFeed = new MyFeed();
         Flux feedFlux = Flux.create(emmiter -> {
             myFeed.register(new MyListener() {
@@ -1739,7 +1761,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void monoCancelSubscriptionTest() {
+    void test_monoCancelSubscription() {
         Mono<String> helloMono = Mono.just("Jack")
                 .log()
                 .map(String::toUpperCase);
@@ -1758,7 +1780,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void monoCompleteSubscriptionRequestBoundedTest() {
+    void test_monoCompleteSubscriptionRequestBounded() {
         //Jill wont be fetched as subscription will be cancelled after 2 elements
         Flux<String> namesMono = Flux.just("Jack", "Jane", "Jill")
                 .log()
@@ -1777,7 +1799,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxBackPressureTest() {
+    void test_fluxBackPressure() {
         Flux<Integer> fluxNumber = Flux.range(1, 5).log();
 
         //Fetches 2 at a time.
@@ -1808,7 +1830,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxBackPressureDropTest() {
+    void test_fluxBackPressureDrop() {
         Flux<Integer> fluxNumber = Flux.range(1, 15).log();
 
         //Fetches 2 at a time.
@@ -1849,7 +1871,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxBackPressureBuffetTest() {
+    void test_fluxBackPressureBuffet() {
         Flux<Integer> fluxNumber = Flux.range(1, 15).log();
 
         //Fetches 2 at a time.
@@ -1888,7 +1910,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxBackPressureOnErrorTest() {
+    void test_fluxBackPressureOnError() {
         Flux<Integer> fluxNumber = Flux.range(1, 15).log();
 
         //Fetches 2 at a time.
@@ -1932,7 +1954,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxBackPressureLimitRateTest() {
+    void test_fluxBackPressureLimitRate() {
         Flux<Integer> fluxNumber = Flux.range(1, 5).log().limitRate(3);
         StepVerifier.create(fluxNumber)
                 .expectNext(1, 2, 3, 4, 5)
@@ -1946,7 +1968,7 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void connectableFluxTest() {
+    void test_connectableFlux() {
         ConnectableFlux<Integer> connectableFlux = Flux.range(1, 10)
                 .delayElements(Duration.ofSeconds(1))
                 .publish();
@@ -1980,7 +2002,7 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void connectableAutoFluxTest() {
+    void test_connectableAutoFlux() {
         //Hot Flux.
         Flux<Integer> connectableFlux = Flux.range(1, 5)
                 .log()
@@ -2003,7 +2025,7 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void connectableRefCountTest() {
+    void test_connectableFlux_1() {
         //Hot Flux.
         Flux<Integer> connectableFlux = Flux.range(1, 15)
                 .delayElements(Duration.ofSeconds(1))
@@ -2029,7 +2051,7 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void deferTest() {
+    void test_defer() {
         Mono<Long> just = Mono.just(System.currentTimeMillis());
         Mono<Long> deferJust = Mono.defer(() -> Mono.just(System.currentTimeMillis()));
 
@@ -2049,7 +2071,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void combineLatestTest() {
+    void test_combineLatest() {
         Flux<String> flux1 = Flux.just("a", "b");
         Flux<String> flux2 = Flux.just("c", "d");
         Flux<String> flux3 = Flux.combineLatest(flux1, flux2, (s1, s2) -> s1 + s2)
@@ -2066,7 +2088,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    public void schedulerHookTest() {
+    public void test_onScheduleHook() {
         Runnable stringCallable = () -> getName();
         Schedulers.onScheduleHook("myHook", runnable -> {
             log.info("before scheduled runnable");
@@ -2087,7 +2109,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void checkpointTest() {
+    void test_checkpoint() {
         Flux flux = Flux.just("Jack", "Jill", "Joe")
                 .checkpoint("before uppercase")
                 .map(e -> e.toUpperCase())
@@ -2104,7 +2126,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void debugAgentTest() {
+    void flux_test_debugAgent() {
         ReactorDebugAgent.init();
         ReactorDebugAgent.processExistingClasses();
         Flux flux = Flux.just("a")
@@ -2122,7 +2144,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxGenerateTest() {
+    void test_flux_generate() {
         Flux<Integer> flux = Flux.generate(() -> 1, (state, sink) -> {
             sink.next(state * 2);
             if (state == 10) {
@@ -2144,7 +2166,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void fluxCreateTest() {
+    void test_flux_create() {
         List<String> names = Arrays.asList("jack", "jill");
         Flux<String> flux = Flux.create(sink -> {
             names.forEach(sink::next);
@@ -2157,7 +2179,7 @@ public class ReactorTest {
     }
 
     @Test
-    public void test_01() {
+    void test_chain() {
         CompanyVO request = new CompanyVO();
         request.setName("Twitter");
         Mono.just(request)
@@ -2167,6 +2189,75 @@ public class ReactorTest {
                 .flatMap(HelperUtil::appendOrgIdToDepartment)
                 .flatMap(HelperUtil::save)
                 .subscribe(System.out::println);
+    }
+
+    /**
+     * ********************************************************************
+     * expand 	Finding the shortest path in a graph. Searching file system. Finding neighbor nodes in a network.
+     * expandDeep 	Finding all possible combinations.
+     * ********************************************************************
+     */
+    @Test
+    void test_expand() {
+        Employee CEO = new Employee("CEO");
+
+        // Directors reporting to CEO
+        Employee directorA = new Employee("Director of Dept A");
+        Employee directorB = new Employee("Director of Dept B");
+        CEO.addDirectReports(directorA, directorB);
+
+        // Managers reporting to directors
+        Employee managerA1 = new Employee("Manager 1 of Dept A");
+        Employee managerA2 = new Employee("Manager 2 of Dept A");
+        Employee managerB1 = new Employee("Manager 1 of Dept B");
+        Employee managerB2 = new Employee("Manager 2 of Dept B");
+        directorA.addDirectReports(managerA1, managerA2);
+        directorB.addDirectReports(managerB1, managerB2);
+
+        Mono.fromSupplier(() -> CEO)
+                .expand(this::getDirectReports)
+                .subscribe(System.out::println);
+    }
+
+    @Test
+    void test_expandDeep() {
+        Employee CEO = new Employee("CEO");
+
+        // Directors reporting to CEO
+        Employee directorA = new Employee("Director of Dept A");
+        Employee directorB = new Employee("Director of Dept B");
+        CEO.addDirectReports(directorA, directorB);
+
+        // Managers reporting to directors
+        Employee managerA1 = new Employee("Manager 1 of Dept A");
+        Employee managerA2 = new Employee("Manager 2 of Dept A");
+        Employee managerB1 = new Employee("Manager 1 of Dept B");
+        Employee managerB2 = new Employee("Manager 2 of Dept B");
+        directorA.addDirectReports(managerA1, managerA2);
+        directorB.addDirectReports(managerB1, managerB2);
+
+        Mono.fromSupplier(() -> CEO)
+                .expandDeep(this::getDirectReports)
+                .subscribe(System.out::println);
+    }
+
+    private Flux<Employee> getDirectReports(Employee employee) {
+        return Flux.fromIterable(employee.getDirectReports());
+    }
+
+    @Test
+    void convertFluxToMono() {
+        Mono<List<String>> mono = Flux.just("jack", "raj").collectList();
+        Flux<List<String>> flux = Flux.just("jack", "raj").collectList().flatMapMany(Flux::just);
+
+        StepVerifier.create(mono)
+                .expectNextCount(1)
+                .verifyComplete();
+
+        StepVerifier.create(flux)
+                .expectNextCount(1)
+                .verifyComplete();
+
     }
 
 }
