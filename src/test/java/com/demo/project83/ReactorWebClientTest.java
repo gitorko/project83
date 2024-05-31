@@ -1,6 +1,14 @@
 package com.demo.project83;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.demo.project83.common.PostEntity;
 import io.netty.handler.ssl.SslContext;
@@ -9,10 +17,13 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.netty.resolver.DefaultAddressResolverGroup;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -30,23 +41,6 @@ public class ReactorWebClientTest {
 
     static String HOST = "https://jsonplaceholder.typicode.com";
 
-    @SneakyThrows
-    public static WebClient getWebClient() {
-        SslContext sslContext = SslContextBuilder
-                .forClient()
-                .trustManager(InsecureTrustManagerFactory.INSTANCE)
-                .build();
-        WebClient webClient = WebClient
-                .builder()
-                .clientConnector(new ReactorClientHttpConnector(
-                                HttpClient.create()
-                                        .secure(t -> t.sslContext(sslContext))
-                                        .resolver(DefaultAddressResolverGroup.INSTANCE)
-                        )
-                ).build();
-        return webClient;
-    }
-
     @Test
     public void getPostTitle() {
         Mono<String> mono = getWebClient()
@@ -60,9 +54,8 @@ public class ReactorWebClientTest {
         StepVerifier.create(mono)
                 .assertNext(e -> {
                     log.info("title: {}", e);
-                    Assertions.assertNotNull(e);
+                    assertNotNull(e);
                 }).verifyComplete();
-
     }
 
     @Test
@@ -78,27 +71,26 @@ public class ReactorWebClientTest {
         StepVerifier.create(mono)
                 .assertNext(e -> {
                     log.info("title: {}", e);
-                    Assertions.assertNotNull(e);
+                    assertNotNull(e);
                 }).verifyComplete();
-
     }
 
     @Test
     public void getAllPosts() {
-        Flux<PostEntity> mono = getWebClient()
+        Flux<PostEntity> flux = getWebClient()
                 .get()
-                .uri( HOST + "/posts")
+                .uri(HOST + "/posts")
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .bodyToFlux(PostEntity.class);
 
-        StepVerifier.create(mono)
+        StepVerifier.create(flux)
                 .assertNext(e -> {
+                    System.out.println(e);
                     log.info("title: {}", e);
-                    Assertions.assertNotNull(e);
+                    assertNotNull(e);
                 }).expectComplete();
-
     }
 
     @Test
@@ -119,9 +111,8 @@ public class ReactorWebClientTest {
         StepVerifier.create(mono)
                 .assertNext(e -> {
                     log.info("post: {}", e);
-                    Assertions.assertNotNull(e.getId());
+                    assertNotNull(e.getId());
                 }).verifyComplete();
-
     }
 
     @Test
@@ -135,26 +126,84 @@ public class ReactorWebClientTest {
 
         StepVerifier.create(mono)
                 .verifyComplete();
+    }
+
+    @Test
+    public void getAllPostsPagination() {
+        Mono<Page<PostEntity>> mono = getWebClient()
+                .get()
+                .uri(HOST + "/posts")
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToFlux(PostEntity.class)
+                .collectList()
+                .map(t -> new PageImpl<>(t, Pageable.ofSize(t.size()), t.size()));
+
+        StepVerifier.create(mono)
+                .assertNext(e -> {
+                    assertEquals(e.getTotalElements(), 100);
+                }).verifyComplete();
 
     }
 
     @Test
     public void getAllPostsPageByPage() {
-        Flux<PostEntity> mono = getWebClient()
+        PageRequest pageRequest = PageRequest.of(1, 10);
+        Function<Pageable, Mono<Page<PostEntity>>> pageSupplier = p -> getSinglePage(p)
+                .onErrorReturn(Page.empty());
+
+        StepVerifier.create(getAllPages(pageRequest, pageSupplier))
+                .assertNext(e -> {
+                    assertEquals(e.size(), 100);
+                })
+                .verifyComplete();
+    }
+
+    private Mono<List<PostEntity>> getAllPages(PageRequest pageRequest, Function<Pageable, Mono<Page<PostEntity>>> pageSupplier) {
+        AtomicReference<Pageable> loRef = new AtomicReference<>(pageRequest);
+        AtomicInteger counter = new AtomicInteger(1);
+        return Mono.defer(() -> pageSupplier.apply(loRef.get()))
+                .repeat()
+                .takeUntil(page -> {
+                    final PageRequest next;
+                    next = PageRequest.of(counter.incrementAndGet(), 10);
+                    loRef.set(next);
+                    return !(page.getTotalElements() > 0);
+                })
+                .collect(Collectors.flatMapping(Page::stream, Collectors.toList()));
+    }
+
+    private Mono<Page<PostEntity>> getSinglePage(Pageable pageable) {
+        log.info("Fetching page: {}", pageable);
+        return getWebClient()
                 .get()
-                .uri( HOST + "/posts?_page=1&_limit=10")
+                .uri(HOST + "/posts?_page=" + pageable.getPageNumber() + "&_size=" + pageable.getPageSize())
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
-                .bodyToFlux(PostEntity.class);
-
-        StepVerifier.create(mono)
-                .assertNext(e -> {
-                    log.info("title: {}", e);
-                    Assertions.assertNotNull(e);
-                }).expectComplete();
-
+                .bodyToFlux(PostEntity.class)
+                .collectList()
+                .map(t -> new PageImpl<>(t, Pageable.ofSize(t.size()), t.size()));
     }
+
+    @SneakyThrows
+    private WebClient getWebClient() {
+        SslContext sslContext = SslContextBuilder
+                .forClient()
+                .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                .build();
+        WebClient webClient = WebClient
+                .builder()
+                .clientConnector(new ReactorClientHttpConnector(
+                                HttpClient.create()
+                                        .secure(t -> t.sslContext(sslContext))
+                                        .resolver(DefaultAddressResolverGroup.INSTANCE)
+                        )
+                ).build();
+        return webClient;
+    }
+
 }
 
 
