@@ -1,6 +1,6 @@
 # Project 83
 
-Spring Reactor Basics
+Spring Reactor, Functional Programming, Completable Future Basics
 
 [https://gitorko.github.io/spring-reactor-basics/](https://gitorko.github.io/spring-reactor-basics/)
 
