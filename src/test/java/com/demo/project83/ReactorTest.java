@@ -1356,13 +1356,91 @@ public class ReactorTest {
         numbFlux.subscribe();
     }
 
+    @SneakyThrows
+    @Test
+    void test_subscribeOn_t1() {
+        Flux<Integer> flux1 = Flux.range(0, 2)
+                .map(i -> {
+                    //will run on incoming thread
+                    log.info("Mapping for " + i + " is done by thread " + Thread.currentThread().getName());
+                    return i;
+                });
+        Runnable r1 = () -> flux1.subscribe(s -> {
+            log.info("Received " + s + " via " + Thread.currentThread().getName());
+        });
+        Thread t1 = new Thread(r1, "t1");
+        log.info("Program thread :: " + Thread.currentThread().getName());
+        t1.start();
+        t1.join();
+    }
+
+    @SneakyThrows
+    @Test
+    void test_subscribeOn_t2() {
+        Flux<Integer> flux2 = Flux.range(0, 2)
+                .map(i -> {
+                    //will run on incoming thread
+                    log.info("Upstream: Mapping for {} is done by thread {}", i, Thread.currentThread().getName());
+                    return i;
+                })
+                .publishOn(Schedulers.single())
+                .map(i -> {
+                    //will run on new thread
+                    log.info("Downstream: Mapping for {} is done by thread {}", i, Thread.currentThread().getName());
+                    return i;
+                });
+        Runnable r2 = () -> flux2.subscribe(s -> {
+            log.info("Received {} via {}", s, Thread.currentThread().getName());
+        });
+        Thread t2 = new Thread(r2, "t2");
+        log.info("Program thread {}" + Thread.currentThread().getName());
+        t2.start();
+        t2.join();
+    }
+
+    @SneakyThrows
+    @Test
+    void test_subscribeOn_t3() {
+        Flux<Integer> flux3 = Flux.range(0, 2)
+                .map(i -> {
+                    //will run on new thread
+                    log.info("Upstream: Mapping for {} is done by thread {}", i, Thread.currentThread().getName());
+                    return i;
+                })
+                .subscribeOn(Schedulers.single())
+                .map(i -> {
+                    //will run on new thread
+                    log.info("Downstream: Mapping for {} is done by thread {}", i, Thread.currentThread().getName());
+                    return i;
+                });
+        Runnable r3 = () -> flux3.subscribe(s -> {
+            log.info("Received {} via {}", s, Thread.currentThread().getName());
+        });
+        Thread t3 = new Thread(r3, "t2");
+        log.info("Program thread {}" + Thread.currentThread().getName());
+        t3.start();
+        t3.join();
+    }
+
     /**
      * ********************************************************************
-     *  subscribeOn - influences upstream (whole chain)
+     *  Schedulers
+     *
+     * parallel - for CPU intensive tasks (computation), thread pool workers = number of CPU cores
+     * newParallel - same as above but new pool
+     * boundedElastic - for IO intensive tasks (network calls), thread pool contains 10 * number of CPU cores
+     * newBoundedElastic - same as above but new pool
+     * immediate - keep the execution in the current thread
+     * single - single reusable thread for all the callers
+     * newSingle - same as above but new pool
+     * elastic - unlimited threads (DON'T USE)
+     *
+     * We can have multiple publishOn methods which will keep switching the context.
+     * The subscribeOn method can not do that. Only the very first subscribeOn method which is close to the source takes precedence.
      * ********************************************************************
      */
     @Test
-    void test_subscribeOn_2() {
+    void test_Schedulers() {
         Flux numbFlux = Flux.range(1, 5)
                 .map(i -> {
                     log.info("Map1 Num: {}, Thread: {}", i, Thread.currentThread().getName());
