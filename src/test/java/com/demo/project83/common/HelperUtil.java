@@ -28,7 +28,7 @@ public class HelperUtil {
                 .delayElement(Duration.ofMillis(new Random().nextInt(1000)));
     }
 
-    public static Flux<Customer> capitalizeCustomerNameFlux(List<Customer> customers) {
+    public static Flux<Customer> capitalizeCustomerName(List<Customer> customers) {
         return Flux.fromIterable(customers)
                 .map(c -> {
                     c.setName(c.getName().toUpperCase());
@@ -44,10 +44,6 @@ public class HelperUtil {
 
     public static String capitalize(String user) {
         return user.toUpperCase();
-    }
-
-    public static Flux<String> capitalizeSplit(String user) {
-        return Flux.fromArray(user.toUpperCase().split(""));
     }
 
     public static Customer getCustomer() {

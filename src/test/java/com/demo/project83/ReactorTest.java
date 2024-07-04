@@ -12,11 +12,11 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +57,9 @@ import reactor.util.retry.RetryBackoffSpec;
 
 /**
  * Reactive Streams Specification
+ * 1. Asynchronous
+ * 2. Non-Blocking
+ * 3. Backpressure
  *
  * Publisher (Mono/Flux)
  *   - subscribe (data source, db, remote service)
@@ -78,14 +81,19 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 public class ReactorTest {
 
-
-    AtomicLong attemptCounter2;
-
     /**
      * ********************************************************************
-     *  mono
+     *  Mono
      * ********************************************************************
      */
+
+    @Test
+    void test_stepVerifier() {
+        Mono.just("jack")
+                .as(StepVerifier::create)
+                .expectNext("jack")
+                .verifyComplete();
+    }
 
     @Test
     void test_mono() {
@@ -113,12 +121,14 @@ public class ReactorTest {
         Mono<String> mono = Mono.justOrEmpty(null);
         mono.subscribe(System.out::println);
         StepVerifier.create(mono)
+                .expectNextCount(0)
                 .verifyComplete();
     }
 
     /**
      * ********************************************************************
      *  log
+     *  request(unbounded)
      *  default subscribe requests unbounded, all elements are requested
      * ********************************************************************
      */
@@ -172,11 +182,12 @@ public class ReactorTest {
     /**
      * ********************************************************************
      *  block
+     *  Never use .block() as it blocks the thread.
+     *  Can we used in tests but not in main code.
      * ********************************************************************
      */
     @Test
     void test_block() {
-        //Never use .block() as it blocks the thread. Can we used in tests but not in main code
         String name = Mono.just("jack")
                 .block();
         System.out.println(name);
@@ -273,6 +284,7 @@ public class ReactorTest {
      *  map - transform an object 1-1 in fixed time in synchronous fashion. Use when there is no delay/IO involved.
      *
      * flatMap - processing is concurrent
+     * so all threads can run at same time not guarantee of being sequential.
      * ********************************************************************
      */
     @Test
@@ -305,16 +317,18 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * Here flatMap will run one after other as there is just 1 thread allocated for it.
+     * You can also look at concatMap to do the same
+     */
     @Test
     void test_flatMap_nonConcurrent() {
         Flux<Integer> flux = Flux.range(1, 10)
                 .map(i -> i)
                 .flatMap(i -> {
-                    System.out.println(i);
                     return Mono.just(i);
                 }, 1);
         flux.subscribe(System.out::println);
-        //No guarantee of order, jack can come first or raj can come first.
         StepVerifier.create(flux)
                 .expectSubscription()
                 .expectNextCount(10)
@@ -400,13 +414,13 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  flatMapMany - similar to flatMap, but function returns flux
+     *  flatMapMany - similar to flatMap but flattens the flux
      * ********************************************************************
      */
     @Test
     void test_flatMapMany() {
         Flux<String> flux1 = Mono.just("the quick brown fox jumps over the lazy dog")
-                .flatMapMany(HelperUtil::capitalizeSplit)
+                .flatMapMany(e -> Flux.fromArray(e.toUpperCase().split("")))
                 .distinct()
                 .sort();
         flux1.subscribe(System.out::println);
@@ -424,7 +438,7 @@ public class ReactorTest {
                 .verifyComplete();
 
         Flux flux3 = Mono.just(getCustomers())
-                .flatMapMany(e -> HelperUtil.capitalizeCustomerNameFlux(e));
+                .flatMapMany(e -> HelperUtil.capitalizeCustomerName(e));
         flux1.subscribe(System.out::println);
         StepVerifier.create(flux3)
                 .expectSubscription()
@@ -450,6 +464,22 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
+     *  flatMapIterable - convert mono of map to flux
+     * ********************************************************************
+     */
+    @Test
+    void test_flatMapIterable2() {
+        Mono<Map<String, String>> mono = Mono.just(Map.of("foo", "bar"));
+        Flux<Map.Entry<String, String>> flux = mono.flatMapIterable(list -> list.entrySet());
+        flux.subscribe(System.out::println);
+        StepVerifier
+                .create(flux)
+                .expectNext(Map.entry("foo", "bar"))
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
      *  transform - accepts a Function functional interface. Used when similar transform is used in many places
      *  input is flux/mono
      *  output is flux/mono
@@ -459,9 +489,9 @@ public class ReactorTest {
     @Test
     void test_transform() {
         //Function defines input and output
-        Function<Flux<String>, Flux<String>> filterMap = name -> name.map(String::toUpperCase);
+        Function<Flux<String>, Flux<String>> upperCaseFunction = name -> name.map(String::toUpperCase);
         Flux<String> flux = Flux.fromIterable(List.of("Jack", "Joe"))
-                .transform(filterMap);
+                .transform(upperCaseFunction);
         flux.subscribe(System.out::println);
         StepVerifier
                 .create(flux)
@@ -595,7 +625,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void test_filterWhen_intersect_inefficent() {
+    void test_filterWhen_intersect_inefficent_1() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
@@ -610,8 +640,28 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  intersect with filter - compare 2 flux for common elements
+     * ********************************************************************
+     */
     @Test
-    void test_filterWhen_intersect_efficent_1() {
+    void test_filter_intersect_inefficient_2() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
+        //Without cache on flux2 it will subscribe many times.
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
+        Flux<String> commonFlux = flux1.filter(f -> {
+            //toStream will block so should be avoided.
+            return flux2.toStream().anyMatch(e -> e.equals(f));
+        });
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
+                .verifyComplete();
+    }
+
+    @Test
+    void test_filter_intersect_efficent_1() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
 
@@ -630,7 +680,7 @@ public class ReactorTest {
     }
 
     @Test
-    void test_filterWhen_intersect_efficent_2() {
+    void test_join_intersect_efficent_2() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
 
@@ -650,31 +700,11 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  intersect with filter - compare 2 flux for common elements
-     * ********************************************************************
-     */
-    @Test
-    void test_filter_intersect() {
-        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
-        //Without cache on flux2 it will subscribe many times.
-        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
-        Flux<String> commonFlux = flux1.filter(f -> {
-            //toStream will block so should be avoided.
-            return flux2.toStream().anyMatch(e -> e.equals(f));
-        });
-        commonFlux.subscribe(System.out::println);
-        StepVerifier.create(commonFlux)
-                .expectNext("apple", "orange")
-                .verifyComplete();
-    }
-
-    /**
-     * ********************************************************************
      *  intersect with filterWhen - compare 2 flux for diff
      * ********************************************************************
      */
     @Test
-    void test_filterWhen_difference() {
+    void test_filterWhen_difference_between_set_inefficient_1() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
@@ -695,7 +725,7 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void test_filter_difference() {
+    void test_filter_difference_between_set_inefficient_2() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
@@ -896,21 +926,24 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * concatDelayError - When one flux can throw an error
+     */
     @Test
     void test_concatDelayError() {
-        Flux<String> flux1 = Flux.just("a", "b")
+        Flux<String> flux1 = Flux.just("a", "b", "c")
                 .map(s -> {
                     if (s.equals("b")) {
                         throw new RuntimeException("error!");
                     }
                     return s;
                 });
-        Flux<String> flux2 = Flux.just("c", "d");
+        Flux<String> flux2 = Flux.just("d", "e", "f");
         Flux<String> flux3 = Flux.concatDelayError(flux1, flux2);
 
         StepVerifier.create(flux3)
                 .expectSubscription()
-                .expectNext("a", "c", "d")
+                .expectNext("a", "d", "e", "f")
                 .expectError()
                 .verify();
     }
@@ -979,6 +1012,9 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * mergeDelayError - when one flux can throw an error
+     */
     @Test
     void test_mergeDelayError() {
         Flux<String> flux1 = Flux.just("a", "b")
@@ -1034,6 +1070,7 @@ public class ReactorTest {
      * ********************************************************************
      *  zipWith - subscribes to publishers in eagerly, waits for both flux to emit one element.
      *  2-8 flux can be zipped, returns a tuple, Instance function
+     *  When 2 different size flux are combined zipWith return the smaller item size new flux.
      * ********************************************************************
      */
     @Test
@@ -1058,6 +1095,50 @@ public class ReactorTest {
                 .expectNext("2. orange")
                 .expectNext("3. banana")
                 .verifyComplete();
+    }
+
+    /**
+     * Cant do zipWith to combine mono & flux.
+     * Use the operator join
+     */
+    @Test
+    void test_join() {
+        Mono<String> mono = Mono.just("green");
+        Flux<String> flux1 = Flux.just("apple", "banana")
+                .join(mono, s -> Flux.never(), s -> Flux.never(), Tuples::of)
+                .flatMap(tuple -> {
+                    return Mono.just(tuple.getT2() + " " + tuple.getT1());
+                });
+        StepVerifier.create(flux1)
+                .expectNext("green apple")
+                .expectNext("green banana")
+                .verifyComplete();
+
+        Flux<String> flux2 = Flux.just("apple", "banana")
+                .zipWith(mono.cache().repeat())
+                .flatMap(tuple -> {
+                    return Mono.just(tuple.getT2() + " " + tuple.getT1());
+                });
+        StepVerifier.create(flux2)
+                .expectNext("green apple")
+                .expectNext("green banana")
+                .verifyComplete();
+    }
+
+    /**
+     * error
+     */
+    @Test
+    void test_onError() {
+        Mono<String> mono = Mono.just("jack")
+                .map(s -> {
+                    throw new RuntimeException("ERROR");
+                });
+        mono.subscribe(s -> log.info("name: {}", s), Throwable::printStackTrace);
+
+        StepVerifier.create(mono)
+                .expectError(RuntimeException.class)
+                .verify();
     }
 
     /**
@@ -1180,10 +1261,10 @@ public class ReactorTest {
      */
     @Test
     void test_retry() {
-        AtomicLong counter = new AtomicLong();
+        AtomicLong attemptCounter = new AtomicLong();
         Mono<String> mono = Mono.just("Jack")
                 .flatMap(n -> {
-                    return this.twoAttemptFunction(counter, n);
+                    return this.twoAttemptFunction(attemptCounter, n);
                 })
                 .retry(3);
         StepVerifier.create(mono)
@@ -1209,12 +1290,12 @@ public class ReactorTest {
      */
     @Test
     void test_retryWhen() {
-        attemptCounter2 = new AtomicLong();
+        AtomicLong attemptCounter1 = new AtomicLong();
         RetryBackoffSpec retryFilter1 = Retry.backoff(3, Duration.ofSeconds(1))
                 .filter(throwable -> throwable instanceof RuntimeException);
 
         Mono<String> mono1 = Mono.just("Jack")
-                .flatMap(this::greetAfter2Failure)
+                .flatMap(e -> this.greetAfter2Failure(attemptCounter1, e))
                 .retryWhen(retryFilter1);
         StepVerifier.create(mono1)
                 .assertNext(e -> {
@@ -1222,22 +1303,22 @@ public class ReactorTest {
                 })
                 .verifyComplete();
 
-        attemptCounter2 = new AtomicLong();
+        AtomicLong attemptCounter2 = new AtomicLong();
         RetryBackoffSpec retryFilter2 = Retry.fixedDelay(1, Duration.ofSeconds(1))
                 .filter(throwable -> throwable instanceof RuntimeException)
                 .onRetryExhaustedThrow(((retryBackoffSpec, retrySignal) ->
                         Exceptions.propagate(retrySignal.failure())
                 ));
         Mono<String> mono2 = Mono.just("Jack")
-                .flatMap(this::greetAfter2Failure)
+                .flatMap(e -> this.greetAfter2Failure(attemptCounter2, e))
                 .retryWhen(retryFilter2);
         StepVerifier.create(mono2)
                 .expectErrorMessage("error")
                 .verify();
     }
 
-    private Mono<String> greetAfter2Failure(String name) {
-        Long attempt = attemptCounter2.getAndIncrement();
+    private Mono<String> greetAfter2Failure(AtomicLong attemptCounter, String name) {
+        Long attempt = attemptCounter.getAndIncrement();
         log.info("attempt value: {}", attempt);
         if (attempt < 2) {
             throw new RuntimeException("error");
@@ -1252,9 +1333,13 @@ public class ReactorTest {
      */
     @Test
     void test_repeat() {
-        Mono<List<String>> flux = Mono.just("Time " + new Date())
+        Mono<List<String>> flux = Mono.defer(() -> {
+                    return Mono.just("UUID " + UUID.randomUUID());
+                })
                 .repeat(5)
                 .collectList();
+        flux.subscribe(System.out::println);
+
         StepVerifier.create(flux)
                 .assertNext(e -> {
                     assertThat(e.size()).isEqualTo(6);
@@ -1264,7 +1349,8 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  doOn - doOnSubscribe, doOnNext, doOnError, doFinally, doOnComplete
+     *  Subscribe onComplete, onError
+     *  Never use this format of subscribe code, always use doOn operator
      * ********************************************************************
      */
     @Test
@@ -1289,10 +1375,16 @@ public class ReactorTest {
                 .verify();
     }
 
+    /**
+     * ********************************************************************
+     * doOn - doOnSubscribe, doOnNext, doOnError, doFinally, doOnComplete
+     * ********************************************************************
+     */
     @Test
     void test_test_doOn_2() {
         Flux<Object> flux = Flux.error(new RuntimeException("error"))
                 .doOnSubscribe(s -> System.out.println("Subscribed!"))
+                .doOnRequest(s ->  System.out.println("Requested!"))
                 .doOnNext(p -> System.out.println("Next!"))
                 .doOnComplete(() -> System.out.println("Completed!"))
                 .doFinally((e) -> System.out.println("Signal: " + e))
@@ -1304,6 +1396,18 @@ public class ReactorTest {
 
         StepVerifier.create(flux)
                 .verifyError(RuntimeException.class);
+
+        Mono<Object> mono = Mono.error(new RuntimeException("error"))
+                .doOnSubscribe(s -> System.out.println("Subscribed!"))
+                .doOnRequest(s ->  System.out.println("Requested!"))
+                .doOnNext(p -> System.out.println("Next!"))
+                .doFinally((e) -> System.out.println("Signal: " + e))
+                .doOnError((e) -> System.out.println("Error: " + e))
+                .doOnSuccess((e) -> System.out.println("Success!"));
+
+        StepVerifier.create(mono)
+                .expectError(RuntimeException.class)
+                .verify();
     }
 
     @Test
@@ -1541,7 +1645,8 @@ public class ReactorTest {
     /**
      * ********************************************************************
      *  fromSupplier - returns a value
-     *  fromCallable - returns a value or exception, runs blocking function on different thread
+     *  fromCallable - returns a value or exception
+     *  fromRunnable - doesnt return value
      * ********************************************************************
      */
     @Test
@@ -1555,13 +1660,29 @@ public class ReactorTest {
     /**
      * ********************************************************************
      *  fromSupplier - returns a value
-     *  fromCallable - returns a value or exception, runs blocking function on different thread
+     *  fromCallable - returns a value or exception
+     *  fromRunnable - doesnt return value
      * ********************************************************************
      */
     @Test
     public void test_fromCallable() {
         Callable<String> stringCallable = () -> getName();
         Mono<String> mono = Mono.fromCallable(stringCallable)
+                .subscribeOn(Schedulers.boundedElastic());
+        mono.subscribe(System.out::println);
+    }
+
+    /**
+     * ********************************************************************
+     *  fromSupplier - returns a value
+     *  fromCallable - returns a value or exception
+     *  fromRunnable - doesnt return value
+     * ********************************************************************
+     */
+    @Test
+    public void test_fromRunnable() {
+        Runnable stringCallable = () -> getName();
+        Mono<Object> mono = Mono.fromRunnable(stringCallable)
                 .subscribeOn(Schedulers.boundedElastic());
         mono.subscribe(System.out::println);
     }
@@ -1612,19 +1733,6 @@ public class ReactorTest {
                 .subscribeOn(Schedulers.newParallel("file-copy", 3))
                 .share();
         fileFlux2.subscribe(l -> log.info("Lines: {}", l));
-    }
-
-    /**
-     * ********************************************************************
-     *  fromRunnable - runs blocking function on different thread, but doesnt return value
-     * ********************************************************************
-     */
-    @Test
-    public void test_fromRunnable() {
-        Runnable stringCallable = () -> getName();
-        Mono<Object> mono = Mono.fromRunnable(stringCallable)
-                .subscribeOn(Schedulers.boundedElastic());
-        mono.subscribe(System.out::println);
     }
 
     /**
