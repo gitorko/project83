@@ -493,6 +493,51 @@ public class ReactorTest {
                 .verify();
     }
 
+    @Test
+    void test_optional() {
+        var mono1 = getHello(true)
+                .defaultIfEmpty("NONE");
+        StepVerifier.create(mono1)
+                .expectNext("HELLO")
+                .verifyComplete();
+
+        var mono2 = getHello(false)
+                .defaultIfEmpty("NONE");
+        StepVerifier.create(mono2)
+                .expectNext("NONE")
+                .verifyComplete();
+
+        var mono3 = getOptionalHello(true)
+                .filter(Optional::isPresent)
+                .map(Optional::get);
+        StepVerifier.create(mono3)
+                .expectNext("HELLO")
+                .verifyComplete();
+
+        var mono4 = getOptionalHello(false)
+                .filter(Optional::isPresent)
+                .map(Optional::get);
+        StepVerifier.create(mono4)
+                .expectNextCount(0)
+                .verifyComplete();
+    }
+
+    private Mono<String> getHello(Boolean flag) {
+        if (flag) {
+            return Mono.just("HELLO");
+        } else {
+            return Mono.empty();
+        }
+    }
+
+    private Mono<Optional<String>> getOptionalHello(Boolean flag) {
+        if (flag) {
+            return Mono.just(Optional.of("HELLO"));
+        } else {
+            return Mono.just(Optional.empty());
+        }
+    }
+
     /**
      * ********************************************************************
      *  switchIfEmpty with Optional
