@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.demo.project83.common.CompanyVO;
 import com.demo.project83.common.Customer;
@@ -1571,11 +1573,11 @@ public class ReactorTest {
      */
     @Test
     @SneakyThrows
-    void readFileTest() {
+    void test_readFile_fromCallable() {
         Mono<List<String>> listMono = Mono.fromCallable(() -> Files.readAllLines(Path.of("src/test/resources/file.txt")))
                 .subscribeOn(Schedulers.boundedElastic());
 
-        listMono.subscribe(l -> log.info("Line: {}", l.size()));
+        listMono.subscribe(l -> log.info("Lines: {}", l.size()));
         TimeUnit.SECONDS.sleep(5);
 
         StepVerifier.create(listMono)
@@ -1585,6 +1587,31 @@ public class ReactorTest {
                     return true;
                 })
                 .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     * Flux.using(
+     *     resourceSupplier,
+     *     (resource) -> return Publisher,
+     *     (resource) -> clean this up
+     * )
+     * ********************************************************************
+     */
+    @Test
+    void test_readFile_using() {
+        Path filePath = Paths.get("src/test/resources/file.txt");
+        Flux<String> fileFlux = Flux.using(
+                () -> Files.lines(filePath),
+                Flux::fromStream,
+                Stream::close
+        );
+        fileFlux.subscribe(l -> log.info("Lines: {}", l));
+
+        Flux<String> fileFlux2 = fileFlux
+                .subscribeOn(Schedulers.newParallel("file-copy", 3))
+                .share();
+        fileFlux2.subscribe(l -> log.info("Lines: {}", l));
     }
 
     /**
