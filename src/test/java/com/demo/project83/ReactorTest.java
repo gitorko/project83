@@ -195,22 +195,6 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  filter - filter out elements that dont meet condition
-     * ********************************************************************
-     */
-    @Test
-    void test_filter() {
-        //Get even numbers
-        Flux flux = Flux.just(1, 2, 3, 4, 5)
-                .filter(i -> i % 2 == 0);
-        flux.subscribe(System.out::println);
-        StepVerifier.create(flux)
-                .expectNext(2, 4)
-                .verifyComplete();
-    }
-
-    /**
-     * ********************************************************************
      *  flux from array, list, stream
      * ********************************************************************
      */
@@ -621,37 +605,58 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  intersect with filterWhen - compare 2 flux for common elements
+     *  filterWhen - returns Mono
+     *  filter - returns object
      * ********************************************************************
      */
     @Test
-    void test_filterWhen_intersect_inefficent_1() {
-        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
-        //Without cache on flux2 it will subscribe many times.
-        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
-
-        //Inefficient - toStream will block so should be avoided.
-        //Not for live stream or stream that can be subscribed only once.
-        //toSteam converts your non-blocking asynchronous flux to a blocking stream API which will impact performance
-        Flux<String> commonFlux = flux1.filterWhen(f -> Mono.just(flux2.toStream().anyMatch(e -> e.equals(f))));
-        commonFlux.subscribe(System.out::println);
-        StepVerifier.create(commonFlux)
-                .expectNext("apple", "orange")
+    void test_filterWhen() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
+        Flux<String> flux2 = flux1.filterWhen(f -> Mono.just(f.equals("apple")));
+        flux2.subscribe(System.out::println);
+        StepVerifier.create(flux2)
+                .expectNext("apple")
                 .verifyComplete();
     }
 
     /**
      * ********************************************************************
-     *  intersect with filter - compare 2 flux for common elements
+     *  filterWhen - returns Mono
+     *  filter - returns object
      * ********************************************************************
      */
     @Test
-    void test_filter_intersect_inefficient_2() {
+    void test_filter() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
+        Flux<String> flux2 = flux1.filter(f -> f.equals("apple"));
+        flux2.subscribe(System.out::println);
+        StepVerifier.create(flux2)
+                .expectNext("apple")
+                .verifyComplete();
+
+        //Get even numbers
+        Flux flux = Flux.just(1, 2, 3, 4, 5)
+                .filter(i -> i % 2 == 0);
+        flux.subscribe(System.out::println);
+        StepVerifier.create(flux)
+                .expectNext(2, 4)
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     *  intersect (common) - compare 2 flux for common elements
+     * ********************************************************************
+     */
+    @Test
+    void test_intersect_inefficient() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         //Without cache on flux2 it will subscribe many times.
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
         Flux<String> commonFlux = flux1.filter(f -> {
             //toStream will block so should be avoided.
+            //Inefficient - toStream will block so should be avoided.
+            //Not for live stream or stream that can be subscribed only once.
             return flux2.toStream().anyMatch(e -> e.equals(f));
         });
         commonFlux.subscribe(System.out::println);
@@ -660,11 +665,15 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  intersect (common) - compare 2 flux for common elements
+     * ********************************************************************
+     */
     @Test
-    void test_filter_intersect_efficent_1() {
+    void test_intersect_efficient_1() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
-
         Flux<String> commonFlux = flux1
                 .collect(Collectors.toSet())
                 .flatMapMany(set -> {
@@ -679,8 +688,13 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    /**
+     * ********************************************************************
+     *  intersect (common) - using join operator
+     * ********************************************************************
+     */
     @Test
-    void test_join_intersect_efficent_2() {
+    void test_intersect_efficient_2() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
         Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
 
@@ -698,45 +712,70 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
-    /**
-     * ********************************************************************
-     *  intersect with filterWhen - compare 2 flux for diff
-     * ********************************************************************
-     */
     @Test
-    void test_filterWhen_difference_between_set_inefficient_1() {
+    void test_intersect_efficient_3() {
         Flux<String> flux1 = Flux.just("apple", "orange", "banana");
-        //Without cache on flux2 it will subscribe many times.
-        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").cache();
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
 
-        Flux<String> diffFlux = flux1.filterWhen(f -> {
-            //toStream will block so should be avoided.
-            return Mono.just(flux2.toStream().anyMatch(e -> e.equals(f))).map(hasElement -> !hasElement);
-        });
-        diffFlux.subscribe(System.out::println);
-        StepVerifier.create(diffFlux)
-                .expectNext("banana")
+        Mono<List<String>> monoList1 = flux1.collectList();
+        Mono<List<String>> monoList2 = flux2.collectList();
+
+        Flux<String> commonFlux = Mono.zip(monoList1, monoList2)
+                .map(tuple -> {
+                    List<String> list1 = tuple.getT1();
+                    List<String> list2 = tuple.getT2();
+                    list1.retainAll(list2);
+                    return list1;
+                }).flatMapIterable(e -> e);
+
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
                 .verifyComplete();
     }
 
-    /**
-     * ********************************************************************
-     *  intersect with filter - compare 2 flux for diff
-     * ********************************************************************
-     */
     @Test
-    void test_filter_difference_between_set_inefficient_2() {
-        Flux<String> flux1 = Flux.just("apple", "orange", "banana").log();
-        //Without cache on flux2 it will subscribe many times.
-        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple").log().cache();
+    void test_intersect_efficient_4() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
 
-        Flux<String> commonFlux = flux1.filter(f -> {
-            //toStream will block so should be avoided.
-            return !flux2.toStream().anyMatch(e -> e.equals(f));
-        });
+        Flux<String> commonFlux = flux2.filterWhen(element ->
+                flux1.any(e -> e.equals(element))
+        );
+
         commonFlux.subscribe(System.out::println);
         StepVerifier.create(commonFlux)
-                .expectNext("banana")
+                .expectNext("apple", "orange")
+                .verifyComplete();
+    }
+
+    @Test
+    void test_intersect_efficient_5() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
+
+        Flux<String> commonFlux = flux2.concatMap(element2 ->
+                flux1.filter(element1 -> element1.equals(element2)).take(1)
+        );
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
+                .verifyComplete();
+    }
+
+    @Test
+    void test_intersect_efficient_6() {
+        Flux<String> flux1 = Flux.just("apple", "orange", "banana");
+        Flux<String> flux2 = Flux.just("apple", "orange", "pumpkin", "papaya", "walnuts", "grapes", "pineapple");
+
+        Flux<String> commonFlux = flux2.flatMap(element2 ->
+                flux1.flatMap(element1 ->
+                        element1.equals(element2) ? Flux.just(element1) : Flux.empty()
+                ).take(1)
+        );
+        commonFlux.subscribe(System.out::println);
+        StepVerifier.create(commonFlux)
+                .expectNext("apple", "orange")
                 .verifyComplete();
     }
 
@@ -927,7 +966,9 @@ public class ReactorTest {
     }
 
     /**
+     * ********************************************************************
      * concatDelayError - When one flux can throw an error
+     * ********************************************************************
      */
     @Test
     void test_concatDelayError() {
@@ -1013,7 +1054,9 @@ public class ReactorTest {
     }
 
     /**
+     * ********************************************************************
      * mergeDelayError - when one flux can throw an error
+     * ********************************************************************
      */
     @Test
     void test_mergeDelayError() {
@@ -1098,8 +1141,10 @@ public class ReactorTest {
     }
 
     /**
+     * ********************************************************************
      * Cant do zipWith to combine mono & flux.
      * Use the operator join
+     * ********************************************************************
      */
     @Test
     void test_join() {
@@ -1126,7 +1171,9 @@ public class ReactorTest {
     }
 
     /**
+     * ********************************************************************
      * error
+     * ********************************************************************
      */
     @Test
     void test_onError() {
@@ -1384,7 +1431,7 @@ public class ReactorTest {
     void test_test_doOn_2() {
         Flux<Object> flux = Flux.error(new RuntimeException("error"))
                 .doOnSubscribe(s -> System.out.println("Subscribed!"))
-                .doOnRequest(s ->  System.out.println("Requested!"))
+                .doOnRequest(s -> System.out.println("Requested!"))
                 .doOnNext(p -> System.out.println("Next!"))
                 .doOnComplete(() -> System.out.println("Completed!"))
                 .doFinally((e) -> System.out.println("Signal: " + e))
@@ -1399,7 +1446,7 @@ public class ReactorTest {
 
         Mono<Object> mono = Mono.error(new RuntimeException("error"))
                 .doOnSubscribe(s -> System.out.println("Subscribed!"))
-                .doOnRequest(s ->  System.out.println("Requested!"))
+                .doOnRequest(s -> System.out.println("Requested!"))
                 .doOnNext(p -> System.out.println("Next!"))
                 .doFinally((e) -> System.out.println("Signal: " + e))
                 .doOnError((e) -> System.out.println("Error: " + e))
@@ -2504,7 +2551,7 @@ public class ReactorTest {
     }
 
     @Test
-    void convertFluxToMono() {
+    void test_fluxToMono() {
         Mono<List<String>> mono = Flux.just("jack", "raj").collectList();
         Flux<List<String>> flux = Flux.just("jack", "raj").collectList().flatMapMany(Flux::just);
 
@@ -2518,5 +2565,39 @@ public class ReactorTest {
 
     }
 
-}
+    @Test
+    void test_compareMapWithList() {
+        List<String> colors = List.of("red", "blue", "green");
+        Map<String, String> fruitMap = Map.of("red", "apple", "green", "grapes");
+        Mono<List<String>> flux1 = Mono.just(fruitMap)
+                .flatMap(map -> {
+                    return Flux.fromIterable(colors)
+                            .flatMap(color -> {
+                                if (map.containsKey(color)) {
+                                    return Mono.just(map.get(color));
+                                }
+                                return Mono.empty();
+                            }).collectList();
+                });
+        flux1.subscribe(System.out::println);
 
+        StepVerifier.create(flux1)
+                .expectNext(List.of("apple", "grapes"))
+                .verifyComplete();
+
+        Flux<String> flux2 = Mono.just(fruitMap)
+                .flatMapMany(map ->
+                        Flux.fromIterable(colors)
+                                .flatMap(color -> {
+                                    String fruit = fruitMap.get(color);
+                                    return fruit != null ? Flux.just(fruit) : Flux.empty();
+                                })
+                );
+        flux2.subscribe(System.out::println);
+        StepVerifier.create(flux2)
+                .expectNext("apple")
+                .expectNext("grapes")
+                .verifyComplete();
+    }
+
+}
