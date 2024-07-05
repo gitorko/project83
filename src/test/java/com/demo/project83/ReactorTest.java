@@ -4,6 +4,7 @@ import static com.demo.project83.common.HelperUtil.getCustomer;
 import static com.demo.project83.common.HelperUtil.getCustomers;
 import static com.demo.project83.common.HelperUtil.getName;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +39,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import reactor.core.Disposable;
 import reactor.core.Exceptions;
 import reactor.core.publisher.BaseSubscriber;
@@ -1406,6 +1409,25 @@ public class ReactorTest {
                 .verifyComplete();
     }
 
+    @Test
+    void test_takeUntil() {
+        AtomicLong counter = new AtomicLong();
+        Mono<List<String>> flux = Mono.defer(() -> {
+                    return Mono.just("UUID " + UUID.randomUUID());
+                })
+                .repeat()
+                .takeUntil(e -> {
+                    return  counter.incrementAndGet() == 5;
+                })
+                .collectList();
+
+        StepVerifier.create(flux)
+                .assertNext(e -> {
+                    assertThat(e.size()).isEqualTo(5);
+                })
+                .verifyComplete();
+    }
+
     /**
      * ********************************************************************
      *  Subscribe onComplete, onError
@@ -1905,18 +1927,21 @@ public class ReactorTest {
     /**
      * ********************************************************************
      *  withVirtualTime - flux that emits every second.
+     *  interval - blocks thread, so you will have to use sleep to see the output
      * ********************************************************************
      */
     @Test
     @SneakyThrows
     void test_withVirtualTime() {
         VirtualTimeScheduler.getOrSet();
-        Flux<Long> interval = Flux.interval(Duration.ofSeconds(1))
+        Flux<Long> intervalFlux = Flux.interval(Duration.ofSeconds(1))
                 .log()
                 .take(10);
-        interval.subscribe(i -> log.info("Number: {}", i));
+        intervalFlux.subscribe(i -> log.info("Number: {}", i));
         TimeUnit.SECONDS.sleep(5);
-        StepVerifier.withVirtualTime(() -> interval)
+        StepVerifier.withVirtualTime(() -> intervalFlux)
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMillis(999))
                 .thenAwait(Duration.ofSeconds(5))
                 .expectNextCount(4)
                 .thenCancel()
@@ -2100,11 +2125,10 @@ public class ReactorTest {
      * ********************************************************************
      */
     @Test
-    void test_monoCompleteSubscriptionRequestBounded() {
-        //Jill wont be fetched as subscription will be cancelled after 2 elements
+    void test_request() {
+        //Jill won't be fetched as subscription will be cancelled after 2 elements
         Flux<String> namesMono = Flux.just("Jack", "Jane", "Jill")
-                .log()
-                .map(String::toUpperCase);
+                .log();
         namesMono.subscribe(s -> {
                     log.info("Got: {}", s);
                 },
@@ -2275,7 +2299,9 @@ public class ReactorTest {
      */
     @Test
     void test_fluxBackPressureLimitRate() {
-        Flux<Integer> fluxNumber = Flux.range(1, 5).log().limitRate(3);
+        Flux<Integer> fluxNumber = Flux.range(1, 5)
+                .log()
+                .limitRate(3);
         StepVerifier.create(fluxNumber)
                 .expectNext(1, 2, 3, 4, 5)
                 .verifyComplete();
@@ -2657,6 +2683,34 @@ public class ReactorTest {
                 .onErrorReturn("raj");
         StepVerifier.create(mono)
                 .expectNext("raj")
+                .verifyComplete();
+    }
+
+    @Test
+    void test_pageImpl() {
+        List<String> names = List.of("Jack", "Raj", "Edward");
+        PageRequest pageRequest = PageRequest.of(0, 5);
+        Mono<PageImpl<String>> pageFlux = Flux.fromIterable(names)
+                .collectList()
+                .zipWith(Mono.just(names.size()))
+                .map(t -> new PageImpl<>(t.getT1(), pageRequest, names.size()));
+
+        pageFlux.subscribe(System.out::println);
+
+        StepVerifier.create(pageFlux)
+                .assertNext(e -> {
+                    assertEquals(e.getNumberOfElements(), 3);
+                    assertEquals("Jack", e.getContent().get(0));
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void test_function() {
+        Function<String, Mono<String>> stringSupplier = p -> Mono.just("hello " + p);
+        Mono<String> mono = Mono.defer(() -> stringSupplier.apply("jack"));
+        StepVerifier.create(mono)
+                .expectNext("hello jack")
                 .verifyComplete();
     }
 
