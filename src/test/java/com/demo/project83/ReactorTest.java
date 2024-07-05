@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import com.demo.project83.common.CompanyVO;
@@ -1177,13 +1178,24 @@ public class ReactorTest {
      */
     @Test
     void test_onError() {
-        Mono<String> mono = Mono.just("jack")
+        Mono<String> mono1 = Mono.just("jack")
                 .map(s -> {
                     throw new RuntimeException("ERROR");
                 });
-        mono.subscribe(s -> log.info("name: {}", s), Throwable::printStackTrace);
+        mono1.subscribe(s -> log.info("name: {}", s), Throwable::printStackTrace);
+        StepVerifier.create(mono1)
+                .expectError(RuntimeException.class)
+                .verify();
 
-        StepVerifier.create(mono)
+        System.out.println("********************************************************************");
+
+        Mono<String> mono2 = Mono.just("jack")
+                .flatMap(s -> {
+                    return Mono.error(new RuntimeException("ERROR"));
+                });
+        mono2.subscribe(s -> log.info("name: {}", s), Throwable::printStackTrace);
+
+        StepVerifier.create(mono2)
                 .expectError(RuntimeException.class)
                 .verify();
     }
@@ -1764,6 +1776,9 @@ public class ReactorTest {
      *     (resource) -> return Publisher,
      *     (resource) -> clean this up
      * )
+     *
+     * share() creates a hot publisher, else it would be a cold publisher.
+     * Cold publisher would read the file for each subscriber – that would mean opening and reading the same file many times.
      * ********************************************************************
      */
     @Test
@@ -2268,7 +2283,8 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  hot flux
+     *  cold flux - producing/emitting only when a subscriber subscribes, generates new sets of values for each new subscription, eg: spotify
+     *  hot flux - emitting happens even there is no subscriber. All the subscribers get the value from the single data producer irrespective of the time they started subscribing, eg: radio
      * ********************************************************************
      */
     @Test
@@ -2445,7 +2461,8 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  Flux.generate - programmatically create flux, synchronous
+     * Flux.generate - programmatically create flux, synchronous, cant emit without downstream subscriber asking for it.
+     * Flux.create - programmatically create flux, asynchronous, can emit more elements without downstream subscriber asking for it.
      * ********************************************************************
      */
     @Test
@@ -2457,17 +2474,23 @@ public class ReactorTest {
             }
             return state + 1;
         });
-
         flux.subscribe(System.out::println);
-
         StepVerifier.create(flux)
                 .expectNextCount(10)
                 .verifyComplete();
+        System.out.println();
     }
 
     /**
      * ********************************************************************
-     *  Flux.create - programmatically create flux, asynchronous
+     * Flux.generate - programmatically create flux, synchronous
+     * Flux.create - programmatically create flux, asynchronous
+     *
+     * buffer - buffer if downstream cant keep up
+     * drop - drop if downstream cant keep up
+     * error - singal error when downstream cant keep up
+     * ignore - ignore downstream backpressure requests
+     * latest - downstream will only get latest
      * ********************************************************************
      */
     @Test
@@ -2480,6 +2503,27 @@ public class ReactorTest {
 
         StepVerifier.create(flux)
                 .expectNextCount(2)
+                .verifyComplete();
+
+        Flux<Integer> integerFlux = Flux.create((FluxSink<Integer> fluxSink) -> {
+            IntStream.range(0, 5)
+                    .peek(i -> System.out.println("going to emit - " + i))
+                    .forEach(fluxSink::next);
+            fluxSink.complete();
+        });
+
+        StepVerifier.create(integerFlux)
+                .expectNextCount(5)
+                .verifyComplete();
+
+        Flux<Integer> integerFlux2 = Flux.create((FluxSink<Integer> fluxSink) -> {
+            IntStream.range(0, 5)
+                    .peek(i -> System.out.println("going to emit - " + i))
+                    .forEach(fluxSink::next);
+        }, FluxSink.OverflowStrategy.DROP);
+
+        StepVerifier.create(integerFlux2)
+                .expectNextCount(5)
                 .verifyComplete();
     }
 
@@ -2597,6 +2641,22 @@ public class ReactorTest {
         StepVerifier.create(flux2)
                 .expectNext("apple")
                 .expectNext("grapes")
+                .verifyComplete();
+    }
+
+    /**
+     * ********************************************************************
+     * timeout - if response doesnt come in certain time then timeout.
+     * ********************************************************************
+     */
+    @Test
+    void test_timeout() {
+        Mono<String> mono = Mono.just("jack")
+                .delayElement(Duration.ofSeconds(5))
+                .timeout(Duration.ofSeconds(1))
+                .onErrorReturn("raj");
+        StepVerifier.create(mono)
+                .expectNext("raj")
                 .verifyComplete();
     }
 
