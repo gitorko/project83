@@ -918,7 +918,8 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  concat - subscribes to publishers in sequence, order guaranteed, static function
+     * concat - subscribes to publishers in sequence, order guaranteed, static function
+     * concatWith - subscribes to publishers in sequence, order guaranteed, instance function
      * ********************************************************************
      */
     @Test
@@ -946,7 +947,8 @@ public class ReactorTest {
 
     /**
      * ********************************************************************
-     *  concatWith - subscribes to publishers in sequence, order guaranteed, instance function
+     * concat - subscribes to publishers in sequence, order guaranteed, static function
+     * concatWith - subscribes to publishers in sequence, order guaranteed, instance function
      * ********************************************************************
      */
     @Test
@@ -991,6 +993,23 @@ public class ReactorTest {
                 .expectNext("a", "d", "e", "f")
                 .expectError()
                 .verify();
+    }
+
+    /**
+     * ********************************************************************
+     *  combineLatest - will change order based on time. Rarely used.
+     * ********************************************************************
+     */
+    @Test
+    void test_combineLatest() {
+        Flux<String> flux1 = Flux.just("a", "b");
+        Flux<String> flux2 = Flux.just("c", "d");
+        Flux<String> flux3 = Flux.combineLatest(flux1, flux2, (s1, s2) -> s1 + s2)
+                .log();
+        StepVerifier.create(flux3)
+                .expectSubscription()
+                .expectNext("bc", "bd")
+                .verifyComplete();
     }
 
     /**
@@ -1778,9 +1797,7 @@ public class ReactorTest {
     void test_readFile_fromCallable() {
         Mono<List<String>> listMono = Mono.fromCallable(() -> Files.readAllLines(Path.of("src/test/resources/file.txt")))
                 .subscribeOn(Schedulers.boundedElastic());
-
-        listMono.subscribe(l -> log.info("Lines: {}", l.size()));
-        TimeUnit.SECONDS.sleep(5);
+        listMono.subscribe(l -> log.info("Lines: {}", l));
 
         StepVerifier.create(listMono)
                 .expectSubscription()
@@ -2399,34 +2416,14 @@ public class ReactorTest {
     @Test
     @SneakyThrows
     void test_defer() {
-        Mono<Long> just = Mono.just(System.currentTimeMillis());
-        Mono<Long> deferJust = Mono.defer(() -> Mono.just(System.currentTimeMillis()));
+        Mono<UUID> just = Mono.just(UUID.randomUUID());
+        Mono<UUID> deferJust = Mono.defer(() -> Mono.just(UUID.randomUUID()));
 
-        just.subscribe(l -> log.info("Time: {}", l));
-        TimeUnit.SECONDS.sleep(2);
-        just.subscribe(l -> log.info("Time: {}", l));
-
-        deferJust.subscribe(l -> log.info("Time: {}", l));
-        TimeUnit.SECONDS.sleep(2);
-        deferJust.subscribe(l -> log.info("Time: {}", l));
-
-    }
-
-    /**
-     * ********************************************************************
-     *  combineLatest - will change order based on time. Rarely used.
-     * ********************************************************************
-     */
-    @Test
-    void test_combineLatest() {
-        Flux<String> flux1 = Flux.just("a", "b");
-        Flux<String> flux2 = Flux.just("c", "d");
-        Flux<String> flux3 = Flux.combineLatest(flux1, flux2, (s1, s2) -> s1 + s2)
-                .log();
-        StepVerifier.create(flux3)
-                .expectSubscription()
-                .expectNext("bc", "bd")
-                .verifyComplete();
+        just.subscribe(l -> log.info("UUID: {}", l));
+        just.subscribe(l -> log.info("UUID: {}", l));
+        System.out.println();
+        deferJust.subscribe(l -> log.info("UUID: {}", l));
+        deferJust.subscribe(l -> log.info("UUID: {}", l));
     }
 
     /**
