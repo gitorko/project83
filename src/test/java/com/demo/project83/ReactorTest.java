@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -37,10 +38,14 @@ import com.demo.project83.common.MyFeed;
 import com.demo.project83.common.MyListener;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import reactor.blockhound.BlockHound;
+import reactor.blockhound.BlockingOperationError;
 import reactor.core.Disposable;
 import reactor.core.Exceptions;
 import reactor.core.publisher.BaseSubscriber;
@@ -84,6 +89,11 @@ import reactor.util.retry.RetryBackoffSpec;
  */
 @Slf4j
 public class ReactorTest {
+
+    @BeforeAll
+    public static void init() {
+        BlockHound.install();
+    }
 
     /**
      * ********************************************************************
@@ -1436,7 +1446,7 @@ public class ReactorTest {
                 })
                 .repeat()
                 .takeUntil(e -> {
-                    return  counter.incrementAndGet() == 5;
+                    return counter.incrementAndGet() == 5;
                 })
                 .collectList();
 
@@ -2543,6 +2553,7 @@ public class ReactorTest {
             IntStream.range(0, 5)
                     .peek(i -> System.out.println("going to emit - " + i))
                     .forEach(fluxSink::next);
+            fluxSink.complete();
         }, FluxSink.OverflowStrategy.DROP);
 
         StepVerifier.create(integerFlux2)
@@ -2709,6 +2720,38 @@ public class ReactorTest {
         StepVerifier.create(mono)
                 .expectNext("hello jack")
                 .verifyComplete();
+    }
+
+    @SneakyThrows
+    @Test
+    void test_blockHound() {
+        try {
+            FutureTask<?> task = new FutureTask<>(() -> {
+                TimeUnit.SECONDS.sleep(2);
+                return "";
+            });
+            Schedulers.parallel().schedule(task);
+            task.get(10, TimeUnit.SECONDS);
+            Assertions.fail("should fail");
+        } catch (Exception e) {
+            Assertions.assertTrue(e.getCause() instanceof BlockingOperationError);
+        }
+    }
+
+    @Test
+    void test_blockHound2() {
+        Mono<String> mono = Mono.just("apple")
+                .flatMap(name -> {
+                    return Mono.just("name")
+                            .map(n -> {
+                                HelperUtil.sleep(1);
+                                return n;
+                            })
+                            .subscribeOn(Schedulers.parallel());
+                });
+
+        StepVerifier.create(mono)
+                .expectError(BlockingOperationError.class);
     }
 
 }

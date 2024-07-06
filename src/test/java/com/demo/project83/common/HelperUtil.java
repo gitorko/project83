@@ -75,14 +75,14 @@ public class HelperUtil {
     @SneakyThrows
     public static String capitalizeString(String element) {
         log.info("Capitalizing: {}", element);
-        TimeUnit.SECONDS.sleep(1);
+        longOps();
         return element.toUpperCase();
     }
 
     @SneakyThrows
     public static String capitalizeStringLatch(String element, CountDownLatch latch) {
         log.info("Capitalizing: {}", element);
-        TimeUnit.SECONDS.sleep(1);
+        longOps();
         latch.countDown();
         return element.toUpperCase();
     }
@@ -142,6 +142,18 @@ public class HelperUtil {
             company.setOwner(e);
             return company;
         });
+    }
+
+    public static void longOps() {
+        long j = 0;
+        for (int i = 0; i < 9999999; i++) {
+            j++;
+        }
+    }
+
+    @SneakyThrows
+    public static void sleep(long seconds) {
+        TimeUnit.SECONDS.sleep(seconds);
     }
 
     public static final class CustomException extends Exception {
