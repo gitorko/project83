@@ -1,5 +1,7 @@
 package com.demo.project83;
 
+import static org.awaitility.Awaitility.await;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -94,6 +96,23 @@ public class CompletableFutureTest {
         }
         //Give enough time for all threads to complete and return back with results.
         TimeUnit.SECONDS.sleep(5);
+        Assertions.assertEquals(5, counter.get());
+    }
+
+    @Test
+    @SneakyThrows
+    void runAsync_test_await() {
+        counter = new AtomicInteger();
+        for (int i = 0; i < 5; i++) {
+            int finalI = i;
+            CompletableFuture.runAsync(() -> {
+                greetHello("Jack_" + finalI);
+            }).thenRun(() -> {
+                counter.incrementAndGet();
+                log.info("Completed!");
+            });
+        }
+        await().atMost(2, TimeUnit.SECONDS).until(() -> counter.get() == 5);
         Assertions.assertEquals(5, counter.get());
     }
 
