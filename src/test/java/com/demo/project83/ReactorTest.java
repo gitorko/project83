@@ -188,7 +188,26 @@ public class ReactorTest {
                     return e;
                 }).delayElements(Duration.ofSeconds(1));
         flux.subscribe(System.out::println);
+        //Test will wait for 1 second
         StepVerifier.create(flux)
+                .expectNext("jack", "raj")
+                .verifyComplete();
+    }
+
+    @Test
+    void test_delayElements_virtualTime() {
+        VirtualTimeScheduler.getOrSet();
+        Flux flux = Flux.just("jack", "raj")
+                .map(e -> {
+                    log.info("Received: {}", e);
+                    //Bad idea to do Thread.sleep or any blocking call.
+                    //Use delayElements.
+                    return e;
+                }).delayElements(Duration.ofDays(1));
+        flux.subscribe(System.out::println);
+        //Use virtual time as test cant wait for 1 day
+        StepVerifier.withVirtualTime(() -> flux)
+                .thenAwait(Duration.ofDays(2))
                 .expectNext("jack", "raj")
                 .verifyComplete();
     }
