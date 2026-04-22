@@ -327,7 +327,7 @@ public class ReactorTest {
 
         Flux flux3 = Flux.fromIterable(getCustomers())
                 .flatMap(HelperUtil::capitalizeCustomerName);
-        flux1.subscribe(System.out::println);
+        flux3.subscribe(System.out::println);
         //No guarantee of order
         StepVerifier.create(flux3)
                 .expectNextCount(5)
